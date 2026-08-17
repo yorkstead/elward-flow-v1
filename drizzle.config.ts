@@ -1,13 +1,12 @@
 import { defineConfig } from 'drizzle-kit'
-import { loadEnvConfig } from '@next/env'
-
-loadEnvConfig(process.cwd())
 
 export default defineConfig({
+  schema: './lib/db/schema.ts',
+  out: './drizzle',
   dialect: 'postgresql',
-  schema: './db/schema.ts',
-  out: './db/migrations',
-  dbCredentials: { url: process.env.DATABASE_URL ?? '' },
-  strict: true,
-  verbose: true,
+  dbCredentials: {
+    url:
+      process.env.DATABASE_URL ||
+      'postgresql://elward:elward_local_only@localhost:5432/elward_flow',
+  },
 })

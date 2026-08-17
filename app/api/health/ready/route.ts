@@ -1,31 +1,27 @@
-import { pool } from '@/db'
-import { getFileStore } from '@/lib/files/minio-file-store'
-import { logger } from '@/lib/logger'
+import { NextResponse } from 'next/server'
+import { testDbConnection } from '@/lib/db'
+import { testStorageConnection } from '@/lib/storage'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const checks = { database: false, objectStorage: false }
-  const errors: string[] = []
-  try {
-    await pool.query('select 1')
-    checks.database = true
-  } catch {
-    errors.push('database unavailable')
-  }
-  try {
-    await getFileStore().ensureReady()
-    checks.objectStorage = true
-  } catch {
-    errors.push('object storage unavailable')
-  }
-  const ready = checks.database && checks.objectStorage
-  if (!ready) logger.warn('Readiness check failed', { checks })
-  return Response.json(
+  const [dbHealthy, storageHealthy] = await Promise.all([
+    testDbConnection(),
+    testStorageConnection(),
+  ])
+
+  const status = dbHealthy && storageHealthy ? 'UP' : 'DOWN'
+  const statusCode = status === 'UP' ? 200 : 503
+
+  return NextResponse.json(
     {
-      status: ready ? 'ready' : 'not-ready',
-      checks,
-      errors,
+      status,
       timestamp: new Date().toISOString(),
+      checks: {
+        database: dbHealthy ? 'healthy' : 'unhealthy',
+        storage: storageHealthy ? 'healthy' : 'unhealthy',
+      },
     },
-    { status: ready ? 200 : 503 },
+    { status: statusCode },
   )
 }

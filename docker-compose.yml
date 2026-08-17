@@ -1,36 +1,52 @@
 services:
   postgres:
-    image: postgres:16.4-alpine
+    image: postgres:16-alpine
+    container_name: elward-flow-postgres
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-elward_flow}
-      POSTGRES_USER: ${POSTGRES_USER:-elward}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-elward_local_only}
+      POSTGRES_DB: elward_flow
+      POSTGRES_USER: elward
+      POSTGRES_PASSWORD: elward_local_only
     ports:
-      - '${POSTGRES_PORT:-5432}:5432'
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
-      interval: 5s
-      timeout: 3s
-      retries: 12
+      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U elward -d elward_flow']
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   minio:
-    image: minio/minio:RELEASE.2025-07-23T15-54-02Z
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-elward-local}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-elward-local-password}
+    image: minio/minio:latest
+    container_name: elward-flow-minio
     ports:
-      - '${MINIO_PORT:-9000}:9000'
-      - '${MINIO_CONSOLE_PORT:-9001}:9001'
-    healthcheck:
-      test: ['CMD', 'mc', 'ready', 'local']
-      interval: 5s
-      timeout: 3s
-      retries: 12
+      - '9000:9000'
+      - '9001:9001'
+    environment:
+      MINIO_ROOT_USER: elward-local
+      MINIO_ROOT_PASSWORD: elward-local-password
     volumes:
       - minio_data:/data
+    command: server /data --console-address ":9001"
+    # We removed the fragile curl health check here
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: elward-flow-minio-init
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for MinIO port 9000 to accept connections...';
+      until mc alias set local_minio http://minio:9000 elward-local elward-local-password > /dev/null 2>&1; do
+        sleep 1;
+      done;
+      echo 'MinIO is online! Creating local bucket...';
+      mc mb --ignore-existing local_minio/elward-flow-local;
+      mc policy set public local_minio/elward-flow-local;
+      echo 'Bucket initialized successfully!';
+      exit 0;
+      "
 
 volumes:
   postgres_data:
