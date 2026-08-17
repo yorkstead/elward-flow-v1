@@ -1,44 +1,32 @@
 # Elward Flow
 
-Elward Flow is the operational source of truth for Elward Systems from release
-intake through shipment.
-
-## Getting Started
-
-Install dependencies and run the development server:
-
-```bash
-bun install
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-Before submitting a change, run:
-
-```bash
-bun run format:check
-bun run lint
-bun run typecheck
-bun run build
-```
+Elward Flow is Elward Systems' operational source of truth from release intake through shipment. This repository currently contains the production foundation only; feature modules intentionally begin in later milestones.
 
 ## Stack
 
-- Next.js 16 App Router
-- React 19 and strict TypeScript
-- Tailwind CSS 4 and shadcn/ui
-- Bun
+Next.js 16 App Router, React 19, strict TypeScript, Tailwind CSS 4, repository-owned shadcn/ui components, PostgreSQL 16 with Drizzle, Auth.js, MinIO through FileStore, a PostgreSQL job worker, Vitest, and Playwright.
 
-PostgreSQL, Drizzle, Auth.js, FileStore, the job worker, and test tooling will be
-introduced in their respective implementation milestones.
+## Start locally
 
-## Project records
+```powershell
+Copy-Item .env.example .env.local
+# Generate and fill AUTH_SECRET; review every local-only credential.
+bun install
+bun run setup
+bun run dev
+```
 
-- Product decisions: `docs/product/decisions.md`
-- Binding implementation rules: `AGENTS.md`
+Run `bun run worker` in a second terminal. Seed prints a fictional administrator password once. Public registration does not exist.
 
-## Linked services
+See [local development](docs/operations/local-development.md) and [environment configuration](docs/operations/environment.md).
 
-- GitHub: `4twentydev/elward-flow-v1`
-- Vercel: `4twentydev/elward-flow-v1`
+## Commands
+
+- `bun run deps:up` / `bun run deps:down` — local PostgreSQL and MinIO
+- `bun run db:generate` / `bun run db:migrate` — migrations
+- `bun run seed` / `bun run admin:create -- email@example.test` — local identities
+- `bun run worker` / `bun run worker:smoke` — background work
+- `bun run backup` / `bun run restore:verify` — recovery utilities
+- `bun run test:all` — formatting, lint, typecheck, tests, browser smoke, and build
+
+Architecture decisions are under `docs/adr/`. Binding rules are in `AGENTS.md`.
