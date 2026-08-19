@@ -1,3 +1,7 @@
 .next
 .vercel
 node_modules
+public/ELWARD_FLOW_CODEX_BUILD_PLAYBOOK.md
+backups/
+playwright-report/
+test-results/

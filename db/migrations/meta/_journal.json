@@ -8,6 +8,13 @@
       "when": 1786961337790,
       "tag": "0000_long_silverclaw",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787176953081,
+      "tag": "0001_windy_vance_astro",
+      "breakpoints": true
     }
   ]
 }

@@ -10,8 +10,11 @@ belong in an ADR under `docs/architecture/`.
 - The initial repository is a platform baseline only. PostgreSQL, Drizzle,
   Auth.js, FileStore, the job worker, and test tooling remain future milestones.
 
-## 2026-08-17 — Foundation authentication
+## 2026-08-19 — Prompt 02: Domain model, permissions matrix, and schema unification
 
-- Auth.js Credentials is used for local password sign-in with encrypted JWT sessions because Auth.js does not support Credentials with database sessions.
-- Users, organization/site membership, authorization, password hashes, and disabled state remain PostgreSQL-backed.
-- The product owner selected this supported design over an unsupported custom database-session bridge.
+- Unified the PostgreSQL Drizzle schema into canonical `db/schema.ts` and eliminated duplicate schema files.
+- Implemented the 21 standard role templates and discrete permissions matrix (`view`, `create`, `edit`, `approve`, `override`, `export`, `configure`, `administer`).
+- Production job numbers strictly enforce 5-digit validation (`^\d{5}$`).
+- Releases use the compound business key `organization + job_id + release_number`.
+- Implemented staged configuration registry where proposed changes require explicit approval before activating.
+- Elevated overrides mandate an explanation (minimum 5 characters) and write immutable records to `audit_events`.

@@ -3,16 +3,20 @@ import { GET as liveGET } from '@/app/api/health/live/route'
 import { GET as readyGET } from '@/app/api/health/ready/route'
 
 const mocks = vi.hoisted(() => ({
-  testDbConnection: vi.fn(),
-  testStorageConnection: vi.fn(),
+  poolQuery: vi.fn(),
+  ensureReady: vi.fn(),
 }))
 
-vi.mock('@/lib/db', () => ({
-  testDbConnection: mocks.testDbConnection,
+vi.mock('@/db', () => ({
+  pool: {
+    query: mocks.poolQuery,
+  },
 }))
 
-vi.mock('@/lib/storage', () => ({
-  testStorageConnection: mocks.testStorageConnection,
+vi.mock('@/lib/files/minio-file-store', () => ({
+  getFileStore: () => ({
+    ensureReady: mocks.ensureReady,
+  }),
 }))
 
 describe('Health API Route Handlers', () => {
@@ -29,8 +33,8 @@ describe('Health API Route Handlers', () => {
   })
 
   it('Readiness probe returns UP when database and storage are healthy', async () => {
-    mocks.testDbConnection.mockResolvedValue(true)
-    mocks.testStorageConnection.mockResolvedValue(true)
+    mocks.poolQuery.mockResolvedValueOnce({ rows: [{ '?column?': 1 }] })
+    mocks.ensureReady.mockResolvedValueOnce(undefined)
 
     const response = await readyGET()
     expect(response.status).toBe(200)
@@ -41,8 +45,8 @@ describe('Health API Route Handlers', () => {
   })
 
   it('Readiness probe returns DOWN and 503 status when database fails', async () => {
-    mocks.testDbConnection.mockResolvedValue(false)
-    mocks.testStorageConnection.mockResolvedValue(true)
+    mocks.poolQuery.mockRejectedValueOnce(new Error('Connection refused'))
+    mocks.ensureReady.mockResolvedValueOnce(undefined)
 
     const response = await readyGET()
     expect(response.status).toBe(503)

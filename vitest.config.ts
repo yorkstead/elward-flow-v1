@@ -1,15 +1,19 @@
 import { defineConfig } from 'vitest/config'
-import path from 'node:path'
-import { loadEnvConfig } from '@next/env'
+import path from 'path'
+import { loadEnv } from 'vite'
 
-loadEnvConfig(process.cwd(), true)
 export default defineConfig({
-  resolve: { alias: { '@': path.resolve(__dirname, '.') } },
   test: {
     environment: 'node',
-    setupFiles: ['./tests/setup-env.ts'],
-    exclude: ['tests/e2e/**', 'node_modules/**'],
-    fileParallelism: false,
-    coverage: { provider: 'v8', reporter: ['text', 'html'] },
+    exclude: ['**/node_modules/**', '**/dist/**', '**/tests/e2e/**'],
+    // Standardize Vitest to load your local .env.local variables automatically
+    env: {
+      ...loadEnv('development', process.cwd(), ''),
+    },
+  },
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './'),
+    },
   },
 })
