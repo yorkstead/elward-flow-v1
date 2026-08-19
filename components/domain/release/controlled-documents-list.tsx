@@ -27,7 +27,10 @@ export function ControlledDocumentsList({
   releaseNumber,
 }: ControlledDocumentsListProps) {
   return (
-    <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5">
+    <div
+      aria-label={`Controlled Documents for Release ${jobNumber}-${releaseNumber}`}
+      className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5"
+    >
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
         <div>
           <h2 className="text-sm font-bold text-slate-900">
@@ -37,19 +40,36 @@ export function ControlledDocumentsList({
             Department-ready fabrication and QC drawings
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="flex h-8 items-center gap-1.5 border-blue-200 bg-blue-50 text-xs font-semibold text-blue-800 hover:bg-blue-100"
-          onClick={() =>
-            alert(
-              `Downloading Complete Release Packet for Job ${jobNumber} Release ${releaseNumber}`,
-            )
-          }
-        >
-          <FileArchive className="h-3.5 w-3.5" />
-          Download Complete Packet (ZIP)
-        </Button>
+        <div className="flex items-center gap-2">
+          <a
+            href={`/api/releases/${jobNumber}/packets/complete?format=pdf`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex h-8 items-center gap-1.5 border-slate-300 bg-white text-xs font-semibold text-slate-800 hover:bg-slate-50"
+            >
+              <FileText className="h-3.5 w-3.5 text-blue-600" />
+              Merged PDF
+            </Button>
+          </a>
+          <a
+            href={`/api/releases/${jobNumber}/packets/complete?format=zip`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex h-8 items-center gap-1.5 border-blue-300 bg-blue-50 text-xs font-semibold text-blue-900 hover:bg-blue-100"
+            >
+              <FileArchive className="h-3.5 w-3.5" />
+              Complete ZIP
+            </Button>
+          </a>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
