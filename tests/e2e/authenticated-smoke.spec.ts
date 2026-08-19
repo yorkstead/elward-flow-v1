@@ -18,11 +18,13 @@ test('redirects unauthorized users and authenticates the local administrator', a
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page).toHaveURL(/\/dashboard/)
   await expect(
-    page.getByRole('heading', { name: 'Foundation status' }),
+    page.getByRole('heading', {
+      name: 'Tempe Gateway Commercial Center Phase II',
+    }),
   ).toBeVisible()
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([])
 
-  await page.getByRole('link', { name: 'Open storage test' }).click()
+  await page.getByRole('link', { name: 'Storage Test' }).click()
   await page.getByLabel('Fictional PDF').setInputFiles({
     name: 'fictional-foundation-test.pdf',
     mimeType: 'application/pdf',

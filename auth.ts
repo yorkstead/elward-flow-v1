@@ -2,7 +2,7 @@ import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import { eq } from 'drizzle-orm'
 import { db } from '@/db'
-import { users } from '@/db/schema'
+import { users, userRoles, roles } from '@/db/schema'
 import { verifyPassword } from '@/lib/auth/password'
 import { credentialsSchema } from '@/lib/auth/validation'
 import { getEnvironment } from '@/lib/env'
@@ -29,6 +29,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           !(await verifyPassword(parsed.data.password, user.passwordHash))
         )
           return null
+
+        const userRoleRows = await db
+          .select({ roleName: roles.name })
+          .from(userRoles)
+          .innerJoin(roles, eq(userRoles.roleId, roles.id))
+          .where(eq(userRoles.userId, user.id))
+
+        const userRoleNames = userRoleRows.map((r) => r.roleName)
+
         return {
           id: user.id,
           name: user.name,
@@ -36,6 +45,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           organizationId: user.organizationId,
           siteId: user.siteId,
           isAdmin: user.isAdmin,
+          roles: userRoleNames,
         }
       },
     }),
@@ -47,6 +57,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.organizationId = user.organizationId
         token.siteId = user.siteId
         token.isAdmin = user.isAdmin
+        token.roles = user.roles ?? []
       }
       return token
     },
@@ -56,6 +67,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.organizationId = String(token.organizationId)
         session.user.siteId = token.siteId ? String(token.siteId) : null
         session.user.isAdmin = Boolean(token.isAdmin)
+        session.user.roles = Array.isArray(token.roles) ? token.roles : []
       }
       return session
     },

@@ -6,6 +6,7 @@ declare module 'next-auth' {
     organizationId: string
     siteId: string | null
     isAdmin: boolean
+    roles: string[]
   }
   interface Session {
     user: {
@@ -13,6 +14,7 @@ declare module 'next-auth' {
       organizationId: string
       siteId: string | null
       isAdmin: boolean
+      roles: string[]
       name?: string | null
       email?: string | null
       image?: string | null
@@ -26,5 +28,6 @@ declare module 'next-auth/jwt' {
     organizationId?: string
     siteId?: string | null
     isAdmin?: boolean
+    roles?: string[]
   }
 }

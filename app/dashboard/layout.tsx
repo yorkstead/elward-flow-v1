@@ -1,11 +1,33 @@
-import { auth } from '@/auth'
+import { auth, signOut } from '@/auth'
 import { redirect } from 'next/navigation'
+import { AppShell } from '@/components/domain/app-shell'
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  if (!(await auth())?.user) redirect('/sign-in')
-  return children
+  const session = await auth()
+  if (!session?.user) redirect('/sign-in')
+
+  const handleSignOut = async () => {
+    'use server'
+    await signOut({ redirectTo: '/sign-in' })
+  }
+
+  return (
+    <AppShell
+      user={{
+        name: session.user.name,
+        email: session.user.email,
+        isAdmin: session.user.isAdmin,
+        roles: session.user.roles,
+      }}
+      siteName="Fictional Primary Plant"
+      timezone="America/Denver"
+      onSignOut={handleSignOut}
+    >
+      {children}
+    </AppShell>
+  )
 }

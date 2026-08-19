@@ -11,7 +11,11 @@ import {
   userRoles,
   configurationRules,
   operationDefinitions,
+  operationInstances,
   documentClassifications,
+  documents,
+  documentRevisions,
+  storedFiles,
   customers,
   projects,
   productionJobs,
@@ -19,6 +23,7 @@ import {
   releaseRevisions,
   panelMarks,
   auditEvents,
+  activityEvents,
 } from '@/db/schema'
 import { hashPassword } from '@/lib/auth/password'
 import { getEnvironment } from '@/lib/env'
@@ -416,52 +421,183 @@ async function main() {
         .returning()
 
       if (revision) {
-        await db.insert(panelMarks).values([
-          {
+        const createdMarks = await db
+          .insert(panelMarks)
+          .values([
+            {
+              organizationId: organization.id,
+              releaseRevisionId: revision.id,
+              mark: 'P-101',
+              description: 'North Elevation Wall Panel',
+              quantity: 24,
+              materialFamily: 'ACM',
+              color: 'Charcoal Grey',
+              thickness: '0.1575',
+              width: '48.0000',
+              length: '96.0000',
+              dimensionUnit: 'in',
+            },
+            {
+              organizationId: organization.id,
+              releaseRevisionId: revision.id,
+              mark: 'P-102',
+              description: 'South Elevation Accent Panel',
+              quantity: 18,
+              materialFamily: 'ACM',
+              color: 'Bright Silver',
+              thickness: '0.1575',
+              width: '36.0000',
+              length: '72.0000',
+              dimensionUnit: 'in',
+            },
+            {
+              organizationId: organization.id,
+              releaseRevisionId: revision.id,
+              mark: 'P-103',
+              description: 'Entry Soffit Panel',
+              quantity: 12,
+              materialFamily: 'Swisspearl',
+              color: 'Anthracite',
+              thickness: '0.3150',
+              width: '24.0000',
+              length: '48.0000',
+              dimensionUnit: 'in',
+            },
+          ])
+          .returning()
+
+        // Fetch created operation definitions
+        const dbOpDefs = await db
+          .select()
+          .from(operationDefinitions)
+          .where(eq(operationDefinitions.organizationId, organization.id))
+
+        const cncDef = dbOpDefs.find((d) => d.code === 'CNC')
+        const eluDef = dbOpDefs.find((d) => d.code === 'ELU')
+        const qcDef = dbOpDefs.find((d) => d.code === 'QC')
+
+        if (createdMarks[0] && cncDef && qcDef) {
+          // P-101: CNC Complete (24 completed)
+          await db.insert(operationInstances).values({
             organizationId: organization.id,
             releaseRevisionId: revision.id,
-            mark: 'P-101',
-            description: 'North Elevation Wall Panel',
-            quantity: 24,
-            materialFamily: 'ACM',
-            color: 'Charcoal Grey',
-            thickness: '0.1575',
-            width: '48.0000',
-            length: '96.0000',
-            dimensionUnit: 'in',
-          },
-          {
+            panelMarkId: createdMarks[0].id,
+            operationDefinitionId: cncDef.id,
+            sequence: 10,
+            status: 'Completed',
+            plannedQuantity: 24,
+            completedQuantity: 24,
+          })
+        }
+
+        if (createdMarks[1] && qcDef && cncDef) {
+          // P-102: In QC with 1 unit on hold
+          await db.insert(operationInstances).values({
             organizationId: organization.id,
             releaseRevisionId: revision.id,
-            mark: 'P-102',
-            description: 'South Elevation Accent Panel',
-            quantity: 18,
-            materialFamily: 'ACM',
-            color: 'Bright Silver',
-            thickness: '0.1575',
-            width: '36.0000',
-            length: '72.0000',
-            dimensionUnit: 'in',
-          },
-          {
+            panelMarkId: createdMarks[1].id,
+            operationDefinitionId: qcDef.id,
+            sequence: 50,
+            status: 'Hold',
+            plannedQuantity: 18,
+            completedQuantity: 17,
+            holdQuantity: 1,
+            notes: 'Minor surface scratch detected on flange',
+          })
+        }
+
+        if (createdMarks[2] && eluDef) {
+          // P-103: In ELU prep
+          await db.insert(operationInstances).values({
             organizationId: organization.id,
             releaseRevisionId: revision.id,
-            mark: 'P-103',
-            description: 'Entry Soffit Panel',
-            quantity: 12,
-            materialFamily: 'Swisspearl',
-            color: 'Anthracite',
-            thickness: '0.3150',
-            width: '24.0000',
-            length: '48.0000',
-            dimensionUnit: 'in',
-          },
-        ])
+            panelMarkId: createdMarks[2].id,
+            operationDefinitionId: eluDef.id,
+            sequence: 20,
+            status: 'In progress',
+            plannedQuantity: 12,
+            completedQuantity: 4,
+          })
+        }
+
+        // Controlled Documents seeding
+        const docClasses = await db
+          .select()
+          .from(documentClassifications)
+          .where(eq(documentClassifications.organizationId, organization.id))
+
+        const dummyFile = await db
+          .insert(storedFiles)
+          .values({
+            organizationId: organization.id,
+            objectKey: 'originals/fictional-drawings-pkg.pdf',
+            originalName: '54120-1-Drawings-Packet.pdf',
+            contentType: 'application/pdf',
+            byteSize: 1048576,
+            sha256:
+              'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+            uploadedById: adminUser.id,
+          })
+          .onConflictDoNothing()
+          .returning()
+
+        const fileId = dummyFile[0]?.id
+
+        for (const dc of docClasses) {
+          const [doc] = await db
+            .insert(documents)
+            .values({
+              organizationId: organization.id,
+              jobId: job.id,
+              releaseId: release.id,
+              classificationId: dc.id,
+              name: `54120-1 ${dc.name}.pdf`,
+            })
+            .returning()
+
+          if (fileId) {
+            await db.insert(documentRevisions).values({
+              documentId: doc.id,
+              releaseRevisionId: revision.id,
+              storedFileId: fileId,
+              revisionLabel: 'A',
+              status: 'current',
+            })
+          }
+        }
       }
     }
   }
 
-  // 7. System Initialization Audit Event
+  // 7. Initial Activity Events & Audit Logs
+  await db.insert(activityEvents).values([
+    {
+      organizationId: organization.id,
+      actorId: adminUser.id,
+      entityType: 'release',
+      entityId: '54120-1',
+      actionTitle: 'Release Intake Approved',
+      summary: 'Approved Rev 1 (A) for shop floor production routing.',
+    },
+    {
+      organizationId: organization.id,
+      actorId: adminUser.id,
+      entityType: 'job',
+      entityId: '54120',
+      actionTitle: 'Job Created',
+      summary: 'Created Job 54120 for Tempe Gateway Commercial Partners.',
+    },
+    {
+      organizationId: organization.id,
+      actorId: adminUser.id,
+      entityType: 'qc',
+      entityId: 'P-102',
+      actionTitle: 'QC Hold Placed',
+      summary:
+        'Held 1 unit of Mark P-102 for surface scratch rework inspection.',
+    },
+  ])
+
   await db.insert(auditEvents).values({
     organizationId: organization.id,
     actorId: adminUser.id,
@@ -469,7 +605,8 @@ async function main() {
     action: 'SYSTEM_INIT',
     resourceType: 'system',
     resourceId: organization.id,
-    reason: 'Seeding baseline Prompt 02 domain model and configuration rules',
+    reason:
+      'Seeding baseline Prompt 02 and 03 domain model and configuration rules',
   })
 
   console.log('Database seeding completed successfully.')
