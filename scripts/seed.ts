@@ -24,6 +24,7 @@ import {
   panelMarks,
   auditEvents,
   activityEvents,
+  workstations,
 } from '@/db/schema'
 import { hashPassword } from '@/lib/auth/password'
 import { getEnvironment } from '@/lib/env'
@@ -350,6 +351,38 @@ async function main() {
         expectedByDefault: true,
       })
       .onConflictDoNothing()
+  }
+
+  // Seed standard workstations
+  const defaultWorkstations = [
+    { name: 'CNC Station 1 - CNT Motion 1', code: 'CNC-01', department: 'CNC' },
+    { name: 'CNC Station 2 - CNT Motion 2', code: 'CNC-02', department: 'CNC' },
+    { name: 'ELU Extrusion Saw 1', code: 'ELU-01', department: 'ELU' },
+    { name: 'Assembly Bay 1', code: 'ASSY-01', department: 'Assembly' },
+    { name: 'Main QC Inspection', code: 'QC-01', department: 'QC' },
+    {
+      name: 'Palletizing & Shipping Dock 1',
+      code: 'SHIP-01',
+      department: 'Shipping',
+    },
+  ]
+
+  for (const ws of defaultWorkstations) {
+    const [existing] = await db
+      .select()
+      .from(workstations)
+      .where(eq(workstations.code, ws.code))
+      .limit(1)
+
+    if (!existing) {
+      await db.insert(workstations).values({
+        siteId: site.id,
+        name: ws.name,
+        code: ws.code,
+        department: ws.department,
+        isActive: true,
+      })
+    }
   }
 
   // 6. Fictional Manufacturing Sample Records

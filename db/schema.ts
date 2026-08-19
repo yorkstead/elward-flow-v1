@@ -630,6 +630,60 @@ export const activityEvents = pgTable('activity_events', {
     .defaultNow(),
 })
 
+export const movementEvents = pgTable(
+  'movement_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    actorId: uuid('actor_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    actingRole: text('acting_role').notNull(),
+    recordType: text('record_type').notNull(), // 'panel_mark', 'release', 'pallet', 'inventory_item', 'shipment'
+    recordId: uuid('record_id').notNull(),
+    recordIdentifier: text('record_identifier').notNull(), // e.g. '54120-1', 'P-101', 'PAL-54120-1-01'
+    sourceStatus: text('source_status').notNull(),
+    destinationStatus: text('destination_status').notNull(),
+    operationInstanceId: uuid('operation_instance_id').references(
+      () => operationInstances.id,
+      { onDelete: 'set null' },
+    ),
+    revisionLabel: text('revision_label').notNull().default('A'),
+    quantity: numeric('quantity', { precision: 12, scale: 4 })
+      .notNull()
+      .default('1'),
+    unit: text('unit').notNull().default('EA'),
+    condition: text('condition').notNull().default('pass'), // pass, pass_with_note, hold, rework, remake, scrap
+    reason: text('reason'),
+    notes: text('notes'),
+    workstationId: uuid('workstation_id').references(() => workstations.id, {
+      onDelete: 'set null',
+    }),
+    deviceId: uuid('device_id').references(() => devices.id, {
+      onDelete: 'set null',
+    }),
+    idempotencyKey: text('idempotency_key').notNull(),
+    clientTimestamp: timestamp('client_timestamp', { withTimezone: true }),
+    serverTimestamp: timestamp('server_timestamp', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex('movement_events_org_idempotency_unique').on(
+      table.organizationId,
+      table.idempotencyKey,
+    ),
+    index('movement_events_record_idx').on(table.recordType, table.recordId),
+    index('movement_events_org_time_idx').on(
+      table.organizationId,
+      table.serverTimestamp,
+    ),
+  ],
+)
+
 export const attachments = pgTable('attachments', {
   id: uuid('id').primaryKey().defaultRandom(),
   organizationId: uuid('organization_id')
