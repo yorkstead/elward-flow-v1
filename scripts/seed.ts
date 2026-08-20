@@ -25,6 +25,11 @@ import {
   auditEvents,
   activityEvents,
   workstations,
+  inventoryItems,
+  inventoryLocations,
+  purchaseOrders,
+  purchaseOrderLines,
+  inventoryTransactions,
 } from '@/db/schema'
 import { hashPassword } from '@/lib/auth/password'
 import { getEnvironment } from '@/lib/env'
@@ -602,7 +607,223 @@ async function main() {
     }
   }
 
-  // 7. Initial Activity Events & Audit Logs
+  // 7. Standard Inventory Items, Locations, and Purchase Orders
+  console.log('Seeding inventory items, locations, and purchase orders...')
+  const [locBayA1] = await db
+    .insert(inventoryLocations)
+    .values({
+      organizationId: organization.id,
+      code: 'BAY-A1',
+      name: 'Sheet Stock Bay A1',
+      zone: 'Raw Sheet Staging',
+    })
+    .onConflictDoUpdate({
+      target: [inventoryLocations.organizationId, inventoryLocations.code],
+      set: { name: 'Sheet Stock Bay A1', updatedAt: new Date() },
+    })
+    .returning()
+
+  const [locRack1] = await db
+    .insert(inventoryLocations)
+    .values({
+      organizationId: organization.id,
+      code: 'RACK-01',
+      name: 'Extrusion Rack 1',
+      zone: 'Extrusions',
+    })
+    .onConflictDoUpdate({
+      target: [inventoryLocations.organizationId, inventoryLocations.code],
+      set: { name: 'Extrusion Rack 1', updatedAt: new Date() },
+    })
+    .returning()
+
+  await db
+    .insert(inventoryLocations)
+    .values({
+      organizationId: organization.id,
+      code: 'STAGING-CNC',
+      name: 'CNC Infeed Staging',
+      zone: 'CNC Routing',
+    })
+    .onConflictDoUpdate({
+      target: [inventoryLocations.organizationId, inventoryLocations.code],
+      set: { name: 'CNC Infeed Staging', updatedAt: new Date() },
+    })
+
+  // Standard Items
+  const [itemAcmSlv] = await db
+    .insert(inventoryItems)
+    .values({
+      organizationId: organization.id,
+      itemNumber: 'ACM-4MM-SLV',
+      materialFamily: 'ACM',
+      description: '4mm ACM Panel Sheet — Silver Metallic (48" × 120")',
+      manufacturer: 'Alpolic Materials',
+      color: 'Silver Metallic',
+      finish: 'Metallic PVDF',
+      thickness: '0.1575',
+      width: '48.0000',
+      length: '120.0000',
+      unit: 'sheets',
+      reorderPoint: '15',
+      reorderQuantity: '50',
+      unitCost: '145.00',
+      status: 'Active',
+    })
+    .onConflictDoUpdate({
+      target: [inventoryItems.organizationId, inventoryItems.itemNumber],
+      set: {
+        description: '4mm ACM Panel Sheet — Silver Metallic (48" × 120")',
+        updatedAt: new Date(),
+      },
+    })
+    .returning()
+
+  const [itemAcmWht] = await db
+    .insert(inventoryItems)
+    .values({
+      organizationId: organization.id,
+      itemNumber: 'ACM-4MM-WHT',
+      materialFamily: 'ACM',
+      description: '4mm ACM Panel Sheet — Bone White (48" × 120")',
+      manufacturer: 'Alpolic Materials',
+      color: 'Bone White',
+      finish: 'Solid 2-Coat PVDF',
+      thickness: '0.1575',
+      width: '48.0000',
+      length: '120.0000',
+      unit: 'sheets',
+      reorderPoint: '20',
+      reorderQuantity: '60',
+      unitCost: '138.00',
+      status: 'Active',
+    })
+    .onConflictDoUpdate({
+      target: [inventoryItems.organizationId, inventoryItems.itemNumber],
+      set: {
+        description: '4mm ACM Panel Sheet — Bone White (48" × 120")',
+        updatedAt: new Date(),
+      },
+    })
+    .returning()
+
+  const [itemExtProfile] = await db
+    .insert(inventoryItems)
+    .values({
+      organizationId: organization.id,
+      itemNumber: 'ALU-EXT-4001',
+      materialFamily: 'Extrusion',
+      description: 'Perimeter Extrusion Profile 4001 (24ft Stock Length)',
+      manufacturer: 'Elward Standard Extrusions',
+      color: 'Mill Finish',
+      finish: 'Mill Finish',
+      thickness: '0.1250',
+      width: '2.5000',
+      length: '288.0000',
+      unit: 'ft',
+      reorderPoint: '200',
+      reorderQuantity: '500',
+      unitCost: '4.25',
+      status: 'Active',
+    })
+    .onConflictDoUpdate({
+      target: [inventoryItems.organizationId, inventoryItems.itemNumber],
+      set: {
+        description: 'Perimeter Extrusion Profile 4001 (24ft Stock Length)',
+        updatedAt: new Date(),
+      },
+    })
+    .returning()
+
+  // Opening Balance Transactions
+  await db.insert(inventoryTransactions).values([
+    {
+      organizationId: organization.id,
+      inventoryItemId: itemAcmSlv.id,
+      locationId: locBayA1.id,
+      transactionType: 'opening_balance',
+      quantity: '45.0000',
+      unit: 'sheets',
+      lotNumber: 'LOT-2026-0810-A',
+      condition: 'good',
+      actorId: adminUser.id,
+      actingRole: 'System Administrator',
+      reason: 'Initial physical inventory count',
+      notes: 'Initial warehouse receipt baseline',
+    },
+    {
+      organizationId: organization.id,
+      inventoryItemId: itemAcmWht.id,
+      locationId: locBayA1.id,
+      transactionType: 'opening_balance',
+      quantity: '30.0000',
+      unit: 'sheets',
+      lotNumber: 'LOT-2026-0811-B',
+      condition: 'good',
+      actorId: adminUser.id,
+      actingRole: 'System Administrator',
+      reason: 'Initial physical inventory count',
+      notes: 'Initial warehouse receipt baseline',
+    },
+    {
+      organizationId: organization.id,
+      inventoryItemId: itemExtProfile.id,
+      locationId: locRack1.id,
+      transactionType: 'opening_balance',
+      quantity: '480.0000',
+      unit: 'ft',
+      lotNumber: 'LOT-EXT-992',
+      condition: 'good',
+      actorId: adminUser.id,
+      actingRole: 'System Administrator',
+      reason: 'Initial extrusion stock',
+      notes: 'Standard 24ft bars',
+    },
+  ])
+
+  // Sample Purchase Order for Tempe Gateway
+  const [poRecord] = await db
+    .insert(purchaseOrders)
+    .values({
+      organizationId: organization.id,
+      poNumber: 'PO-94102',
+      vendorName: 'Mitsubishi Chemical America',
+      status: 'Issued',
+      expectedDate: new Date(Date.now() + 86400000 * 3), // 3 days in future
+      notes: 'Material for Job 54120 Release 1 ACM panel routing',
+    })
+    .onConflictDoUpdate({
+      target: [purchaseOrders.organizationId, purchaseOrders.poNumber],
+      set: { vendorName: 'Mitsubishi Chemical America', updatedAt: new Date() },
+    })
+    .returning()
+
+  await db.insert(purchaseOrderLines).values([
+    {
+      purchaseOrderId: poRecord.id,
+      lineNumber: 1,
+      inventoryItemId: itemAcmSlv.id,
+      description: '4mm ACM Panel Sheet — Silver Metallic (48" × 120")',
+      orderedQuantity: '30.0000',
+      receivedQuantity: '0.0000',
+      unit: 'sheets',
+      unitPrice: '145.00',
+      status: 'Open',
+    },
+    {
+      purchaseOrderId: poRecord.id,
+      lineNumber: 2,
+      inventoryItemId: itemAcmWht.id,
+      description: '4mm ACM Panel Sheet — Bone White (48" × 120")',
+      orderedQuantity: '20.0000',
+      receivedQuantity: '0.0000',
+      unit: 'sheets',
+      unitPrice: '138.00',
+      status: 'Open',
+    },
+  ])
+
+  // 8. Initial Activity Events & Audit Logs
   await db.insert(activityEvents).values([
     {
       organizationId: organization.id,
@@ -629,6 +850,14 @@ async function main() {
       summary:
         'Held 1 unit of Mark P-102 for surface scratch rework inspection.',
     },
+    {
+      organizationId: organization.id,
+      actorId: adminUser.id,
+      entityType: 'inventory',
+      entityId: 'PO-94102',
+      actionTitle: 'Purchase Order Issued',
+      summary: 'Issued PO-94102 for 50 ACM sheets to Mitsubishi Chemical.',
+    },
   ])
 
   await db.insert(auditEvents).values({
@@ -639,7 +868,7 @@ async function main() {
     resourceType: 'system',
     resourceId: organization.id,
     reason:
-      'Seeding baseline Prompt 02 and 03 domain model and configuration rules',
+      'Seeding baseline Prompt 02 through Prompt 07 domain model and configuration rules',
   })
 
   console.log('Database seeding completed successfully.')

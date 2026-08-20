@@ -605,6 +605,275 @@ export const productionDowntimeEvents = pgTable('production_downtime_events', {
 })
 
 // ============================================================================
+// 5B. Inventory, Purchasing, Receiving & Allocations
+// ============================================================================
+
+export const inventoryItems = pgTable(
+  'inventory_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    itemNumber: text('item_number').notNull(),
+    materialFamily: text('material_family').notNull(), // 'ACM' | 'Plate' | 'Extrusion' | 'Fastener' | 'Gasket' | 'Other'
+    description: text('description').notNull(),
+    manufacturer: text('manufacturer'),
+    color: text('color'),
+    finish: text('finish'),
+    thickness: numeric('thickness', { precision: 10, scale: 4 }),
+    width: numeric('width', { precision: 10, scale: 4 }),
+    length: numeric('length', { precision: 10, scale: 4 }),
+    unit: text('unit').notNull().default('sheets'), // 'sheets' | 'ft' | 'pcs' | 'lbs'
+    reorderPoint: numeric('reorder_point', { precision: 12, scale: 4 }).default(
+      '10',
+    ),
+    reorderQuantity: numeric('reorder_quantity', {
+      precision: 12,
+      scale: 4,
+    }).default('20'),
+    unitCost: numeric('unit_cost', { precision: 12, scale: 4 }).default('0'),
+    status: text('status').notNull().default('Active'), // 'Active' | 'Discontinued' | 'Hold'
+    version: integer('version').notNull().default(1),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex('inventory_items_org_item_number_unique').on(
+      table.organizationId,
+      table.itemNumber,
+    ),
+  ],
+)
+
+export const inventoryLocations = pgTable(
+  'inventory_locations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    code: text('code').notNull(),
+    name: text('name').notNull(),
+    zone: text('zone').notNull().default('Warehouse'),
+    isActive: boolean('is_active').notNull().default(true),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex('inventory_locations_org_code_unique').on(
+      table.organizationId,
+      table.code,
+    ),
+  ],
+)
+
+export const purchaseOrders = pgTable(
+  'purchase_orders',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    poNumber: text('po_number').notNull(),
+    vendorName: text('vendor_name').notNull(),
+    status: text('status').notNull().default('Issued'), // 'Draft' | 'Issued' | 'Partially Received' | 'Received' | 'Cancelled'
+    orderDate: timestamp('order_date', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    expectedDate: timestamp('expected_date', { withTimezone: true }),
+    releaseId: uuid('release_id').references(() => releases.id, {
+      onDelete: 'set null',
+    }),
+    notes: text('notes'),
+    version: integer('version').notNull().default(1),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex('purchase_orders_org_po_number_unique').on(
+      table.organizationId,
+      table.poNumber,
+    ),
+  ],
+)
+
+export const purchaseOrderLines = pgTable('purchase_order_lines', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  purchaseOrderId: uuid('purchase_order_id')
+    .notNull()
+    .references(() => purchaseOrders.id, { onDelete: 'cascade' }),
+  lineNumber: integer('line_number').notNull(),
+  inventoryItemId: uuid('inventory_item_id')
+    .notNull()
+    .references(() => inventoryItems.id),
+  description: text('description').notNull(),
+  orderedQuantity: numeric('ordered_quantity', {
+    precision: 12,
+    scale: 4,
+  }).notNull(),
+  receivedQuantity: numeric('received_quantity', {
+    precision: 12,
+    scale: 4,
+  })
+    .notNull()
+    .default('0'),
+  unit: text('unit').notNull().default('sheets'),
+  unitPrice: numeric('unit_price', { precision: 12, scale: 4 }).default('0'),
+  status: text('status').notNull().default('Open'), // 'Open' | 'Partially Received' | 'Completed' | 'Cancelled'
+  ...timestamps,
+})
+
+export const materialAllocations = pgTable('material_allocations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  inventoryItemId: uuid('inventory_item_id')
+    .notNull()
+    .references(() => inventoryItems.id, { onDelete: 'cascade' }),
+  releaseId: uuid('release_id')
+    .notNull()
+    .references(() => releases.id, { onDelete: 'cascade' }),
+  panelMarkId: uuid('panel_mark_id').references(() => panelMarks.id, {
+    onDelete: 'set null',
+  }),
+  allocatedQuantity: numeric('allocated_quantity', {
+    precision: 12,
+    scale: 4,
+  }).notNull(),
+  issuedQuantity: numeric('issued_quantity', {
+    precision: 12,
+    scale: 4,
+  })
+    .notNull()
+    .default('0'),
+  consumedQuantity: numeric('consumed_quantity', {
+    precision: 12,
+    scale: 4,
+  })
+    .notNull()
+    .default('0'),
+  unit: text('unit').notNull().default('sheets'),
+  isSubstituted: boolean('is_substituted').notNull().default(false),
+  originalItemId: uuid('original_item_id').references(() => inventoryItems.id, {
+    onDelete: 'set null',
+  }),
+  substitutionReason: text('substitution_reason'),
+  allocatedById: uuid('allocated_by_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  ...timestamps,
+})
+
+export const cycleCountSessions = pgTable('cycle_count_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  sessionNumber: text('session_number').notNull(),
+  status: text('status').notNull().default('Open'), // 'Open' | 'In Progress' | 'Reconciliation Required' | 'Approved' | 'Closed'
+  isBlindMode: boolean('is_blind_mode').notNull().default(true),
+  scopeZone: text('scope_zone').notNull().default('All Warehouse'),
+  countedById: uuid('counted_by_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  approvedById: uuid('approved_by_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  notes: text('notes'),
+  startedAt: timestamp('started_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  ...timestamps,
+})
+
+export const cycleCountLines = pgTable('cycle_count_lines', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  sessionId: uuid('session_id')
+    .notNull()
+    .references(() => cycleCountSessions.id, { onDelete: 'cascade' }),
+  inventoryItemId: uuid('inventory_item_id')
+    .notNull()
+    .references(() => inventoryItems.id, { onDelete: 'cascade' }),
+  locationId: uuid('location_id').references(() => inventoryLocations.id, {
+    onDelete: 'set null',
+  }),
+  systemQuantity: numeric('system_quantity', {
+    precision: 12,
+    scale: 4,
+  }).notNull(),
+  countedQuantity: numeric('counted_quantity', { precision: 12, scale: 4 }),
+  discrepancyQuantity: numeric('discrepancy_quantity', {
+    precision: 12,
+    scale: 4,
+  }),
+  isReconciled: boolean('is_reconciled').notNull().default(false),
+  reconciliationReason: text('reconciliation_reason'),
+  ...timestamps,
+})
+
+// Immutable Inventory Transactions Ledger
+export const inventoryTransactions = pgTable(
+  'inventory_transactions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    inventoryItemId: uuid('inventory_item_id')
+      .notNull()
+      .references(() => inventoryItems.id, { onDelete: 'cascade' }),
+    locationId: uuid('location_id').references(() => inventoryLocations.id, {
+      onDelete: 'set null',
+    }),
+    transactionType: text('transaction_type').notNull(), // 'opening_balance' | 'receipt' | 'transfer' | 'allocation' | 'deallocation' | 'issue' | 'return' | 'consumption' | 'scrap' | 'adjustment' | 'cycle_count'
+    quantity: numeric('quantity', { precision: 12, scale: 4 }).notNull(),
+    unit: text('unit').notNull().default('sheets'),
+    lotNumber: text('lot_number'),
+    heatNumber: text('heat_number'),
+    condition: text('condition').notNull().default('good'), // 'good' | 'damaged' | 'held' | 'quarantine'
+    releaseId: uuid('release_id').references(() => releases.id, {
+      onDelete: 'set null',
+    }),
+    panelMarkId: uuid('panel_mark_id').references(() => panelMarks.id, {
+      onDelete: 'set null',
+    }),
+    operationInstanceId: uuid('operation_instance_id').references(
+      () => operationInstances.id,
+      { onDelete: 'set null' },
+    ),
+    purchaseOrderId: uuid('purchase_order_id').references(
+      () => purchaseOrders.id,
+      { onDelete: 'set null' },
+    ),
+    purchaseOrderLineId: uuid('purchase_order_line_id').references(
+      () => purchaseOrderLines.id,
+      { onDelete: 'set null' },
+    ),
+    countSessionId: uuid('count_session_id').references(
+      () => cycleCountSessions.id,
+      { onDelete: 'set null' },
+    ),
+    actorId: uuid('actor_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    actingRole: text('acting_role').notNull(),
+    reason: text('reason'), // Mandatory for scrap, adjustments, substitutions
+    notes: text('notes'),
+    serverTimestamp: timestamp('server_timestamp', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('inv_trans_org_time_idx').on(
+      table.organizationId,
+      table.serverTimestamp,
+    ),
+    index('inv_trans_item_idx').on(table.inventoryItemId),
+    index('inv_trans_type_idx').on(table.transactionType),
+  ],
+)
+
+// ============================================================================
 // 6. Audit Ledger & Activity Stream (Append-Only, Immutable)
 // ============================================================================
 

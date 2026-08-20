@@ -40,7 +40,9 @@ interface AssemblyConsoleProps {
   assemblyItems: ProductionQueueItem[]
   workstations: WorkstationOption[]
   onItemUpdated?: () => void
-  onUpdateItem?: (updated: Partial<ProductionQueueItem> & { id: string }) => void
+  onUpdateItem?: (
+    updated: Partial<ProductionQueueItem> & { id: string },
+  ) => void
 }
 
 export function AssemblyConsole({
@@ -50,9 +52,8 @@ export function AssemblyConsole({
   onUpdateItem,
 }: AssemblyConsoleProps) {
   const [selectedBayId, setSelectedBayId] = React.useState<string>('all')
-  const [activeItem, setActiveItem] = React.useState<ProductionQueueItem | null>(
-    null,
-  )
+  const [activeItem, setActiveItem] =
+    React.useState<ProductionQueueItem | null>(null)
 
   // Team Assignment Modal
   const [teamModalOpen, setTeamModalOpen] = React.useState(false)

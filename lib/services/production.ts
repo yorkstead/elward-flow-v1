@@ -25,19 +25,11 @@ export interface AuthenticatedContext {
 }
 
 export type OperationInstanceStatus =
-  | 'Pending'
-  | 'Ready'
-  | 'In progress'
-  | 'Completed'
-  | 'Hold'
-  | 'Scrapped'
+  'Pending' | 'Ready' | 'In progress' | 'Completed' | 'Hold' | 'Scrapped'
 
 export type ProductionPriority = 'Standard' | 'Rush' | 'Remake Priority'
 export type FirstOffResult =
-  | 'pending'
-  | 'passed'
-  | 'failed'
-  | 'passed_with_note'
+  'pending' | 'passed' | 'failed' | 'passed_with_note'
 export type DowntimeCategory =
   | 'Machine Breakdown'
   | 'Drawing Conflict'

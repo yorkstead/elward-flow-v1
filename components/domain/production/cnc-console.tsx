@@ -36,7 +36,9 @@ interface CncConsoleProps {
   cncItems: ProductionQueueItem[]
   workstations: WorkstationOption[]
   onItemUpdated?: () => void
-  onUpdateItem?: (updated: Partial<ProductionQueueItem> & { id: string }) => void
+  onUpdateItem?: (
+    updated: Partial<ProductionQueueItem> & { id: string },
+  ) => void
 }
 
 export function CncConsole({
