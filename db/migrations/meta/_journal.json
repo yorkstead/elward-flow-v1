@@ -36,6 +36,20 @@
       "when": 1787184613584,
       "tag": "0004_wise_stark_industries",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787185045517,
+      "tag": "0005_brief_karma",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787197916942,
+      "tag": "0006_cuddly_thor",
+      "breakpoints": true
     }
   ]
 }

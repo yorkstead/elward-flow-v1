@@ -352,6 +352,10 @@ export const panelMarks = pgTable(
     length: numeric('length', { precision: 10, scale: 4 }),
     dimensionUnit: text('dimension_unit').notNull().default('in'),
     notes: text('notes'),
+    isRemake: boolean('is_remake').notNull().default(false),
+    originalMarkId: uuid('original_mark_id'),
+    remakeType: text('remake_type'), // 'RMK' | 'RME'
+    remakeSequence: integer('remake_sequence'),
     version: integer('version').notNull().default(1),
     ...timestamps,
   },
@@ -874,6 +878,113 @@ export const inventoryTransactions = pgTable(
 )
 
 // ============================================================================
+// 5C. Quality Management, Holds, Non-Conformances & Remakes
+// ============================================================================
+
+export const qualityInspections = pgTable('quality_inspections', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  releaseId: uuid('release_id')
+    .notNull()
+    .references(() => releases.id, { onDelete: 'cascade' }),
+  releaseRevisionId: uuid('release_revision_id').references(
+    () => releaseRevisions.id,
+    { onDelete: 'set null' },
+  ),
+  panelMarkId: uuid('panel_mark_id')
+    .notNull()
+    .references(() => panelMarks.id, { onDelete: 'cascade' }),
+  operationInstanceId: uuid('operation_instance_id').references(
+    () => operationInstances.id,
+    { onDelete: 'set null' },
+  ),
+  quantity: integer('quantity').notNull().default(1),
+  inspectorId: uuid('inspector_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  specificationVersion: text('specification_version').notNull().default('v1.0'),
+  measurements: jsonb('measurements'), // { width, length, diagonal, thickness, notes }
+  disposition: text('disposition').notNull(), // 'Pass' | 'Pass with Note' | 'Hold' | 'Rework' | 'Remake' | 'Scrap'
+  notes: text('notes'),
+  destination: text('destination'),
+  ...timestamps,
+})
+
+export const qualityIssues = pgTable('quality_issues', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  issueNumber: text('issue_number').notNull(),
+  category: text('category').notNull(), // 'Surface Defect' | 'Dimensional Discrepancy' | 'Bending/Routing Error' | 'Hardware/Assembly Defect' | 'Material Flaw' | 'Drawing Discrepancy' | 'Handling Damage' | 'Other'
+  severity: text('severity').notNull().default('Moderate'), // 'Minor' | 'Moderate' | 'Critical' | 'Blocking'
+  detectionPoint: text('detection_point').notNull(), // 'QC Final Inspection' | 'Assembly Bay' | 'CNC Routing'
+  suspectedCause: text('suspected_cause'),
+  responsibleDepartment: text('responsible_department').notNull(), // 'Engineering' | 'CNC' | 'ELU' | 'Assembly' | 'Material/Vendor' | 'Shipping' | 'Field'
+  ownerId: uuid('owner_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  dueDate: timestamp('due_date', { withTimezone: true }),
+  affectedQuantity: integer('affected_quantity').notNull().default(1),
+  containmentAction: text('containment_action'),
+  disposition: text('disposition').notNull().default('Hold'), // 'Hold' | 'Rework' | 'Remake' | 'Scrap' | 'Pass with Note' | 'Resolved'
+  status: text('status').notNull().default('Open'), // 'Open' | 'Under Investigation' | 'Resolved' | 'Closed'
+  resolutionNotes: text('resolution_notes'),
+  verifiedById: uuid('verified_by_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  verifiedAt: timestamp('verified_at', { withTimezone: true }),
+  releaseId: uuid('release_id').references(() => releases.id, {
+    onDelete: 'cascade',
+  }),
+  panelMarkId: uuid('panel_mark_id').references(() => panelMarks.id, {
+    onDelete: 'cascade',
+  }),
+  operationInstanceId: uuid('operation_instance_id').references(
+    () => operationInstances.id,
+    { onDelete: 'set null' },
+  ),
+  ...timestamps,
+})
+
+export const panelMarkRemakes = pgTable('panel_mark_remakes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  remakeType: text('remake_type').notNull(), // 'RMK' (Shop) | 'RME' (Engineering)
+  remakeMark: text('remake_mark').notNull(), // e.g. 'P-101-RME-51'
+  sequenceNumber: integer('sequence_number').notNull().default(51),
+  originalPanelMarkId: uuid('original_panel_mark_id')
+    .notNull()
+    .references(() => panelMarks.id, { onDelete: 'cascade' }),
+  replacementPanelMarkId: uuid('replacement_panel_mark_id').references(
+    () => panelMarks.id,
+    { onDelete: 'set null' },
+  ),
+  qualityIssueId: uuid('quality_issue_id').references(() => qualityIssues.id, {
+    onDelete: 'set null',
+  }),
+  responsibleArea: text('responsible_area').notNull(), // 'Engineering' | 'Shop Floor' | 'Vendor' | 'Customer Change'
+  materialCost: numeric('material_cost', { precision: 12, scale: 4 }).default(
+    '0',
+  ),
+  laborHours: numeric('labor_hours', { precision: 10, scale: 2 }).default('0'),
+  laborCost: numeric('labor_cost', { precision: 12, scale: 4 }).default('0'),
+  outsideCost: numeric('outside_cost', { precision: 12, scale: 4 }).default(
+    '0',
+  ),
+  totalCost: numeric('total_cost', { precision: 12, scale: 4 }).default('0'),
+  approvedById: uuid('approved_by_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  status: text('status').notNull().default('Pending'), // 'Pending' | 'In Routing' | 'QC Completed' | 'Palletized' | 'Shipped'
+  ...timestamps,
+})
+
+// ============================================================================
 // 6. Audit Ledger & Activity Stream (Append-Only, Immutable)
 // ============================================================================
 
@@ -1098,7 +1209,160 @@ export const jobs = pgTable(
 )
 
 // ============================================================================
-// 9. Relational Queries Configuration
+// 9. Palletizing & Logistics (Pallets, Pallet Items, Shipments, Shipment Pallets)
+// ============================================================================
+
+export const pallets = pgTable(
+  'pallets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    palletNumber: text('pallet_number').notNull(),
+    releaseId: uuid('release_id')
+      .notNull()
+      .references(() => releases.id, { onDelete: 'cascade' }),
+    releaseRevisionId: uuid('release_revision_id').references(
+      () => releaseRevisions.id,
+      { onDelete: 'set null' },
+    ),
+    status: text('status').notNull().default('Draft'), // 'Draft' | 'Building' | 'Completed' | 'Staged' | 'Shipped'
+    elevation: text('elevation'),
+    maxHeightInches: numeric('max_height_inches', { precision: 10, scale: 2 })
+      .notNull()
+      .default('60.00'),
+    currentHeightInches: numeric('current_height_inches', {
+      precision: 10,
+      scale: 2,
+    })
+      .notNull()
+      .default('0.00'),
+    maxWeightLbs: numeric('max_weight_lbs', { precision: 10, scale: 2 })
+      .notNull()
+      .default('2500.00'),
+    currentWeightLbs: numeric('current_weight_lbs', {
+      precision: 10,
+      scale: 2,
+    })
+      .notNull()
+      .default('0.00'),
+    panelCount: integer('panel_count').notNull().default(0),
+    builderId: uuid('builder_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    notes: text('notes'),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex('pallets_org_number_unique').on(
+      table.organizationId,
+      table.palletNumber,
+    ),
+    index('pallets_release_id_idx').on(table.releaseId),
+  ],
+)
+
+export const palletItems = pgTable(
+  'pallet_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    palletId: uuid('pallet_id')
+      .notNull()
+      .references(() => pallets.id, { onDelete: 'cascade' }),
+    panelMarkId: uuid('panel_mark_id')
+      .notNull()
+      .references(() => panelMarks.id, { onDelete: 'cascade' }),
+    quantity: integer('quantity').notNull().default(1),
+    sequence: integer('sequence').notNull().default(1),
+    stagedAt: timestamp('staged_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    stagedById: uuid('staged_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    ...timestamps,
+  },
+  (table) => [
+    index('pallet_items_pallet_id_idx').on(table.palletId),
+    index('pallet_items_panel_mark_id_idx').on(table.panelMarkId),
+  ],
+)
+
+export const shipments = pgTable(
+  'shipments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    shipmentNumber: text('shipment_number').notNull(),
+    carrier: text('carrier').notNull().default('Dedicated Logistics'),
+    trailerNumber: text('trailer_number'),
+    driverName: text('driver_name'),
+    driverPhone: text('driver_phone'),
+    bolNumber: text('bol_number'),
+    status: text('status').notNull().default('Draft'), // 'Draft' | 'Loading' | 'Ready for Dispatch' | 'Dispatched' | 'Delivered'
+    scheduledDeparture: timestamp('scheduled_departure', {
+      withTimezone: true,
+    }),
+    actualDeparture: timestamp('actual_departure', { withTimezone: true }),
+    originAddress: text('origin_address')
+      .notNull()
+      .default('Elward Systems Corp Plant 1, Loveland, CO'),
+    destinationAddress: text('destination_address'),
+    totalWeightLbs: numeric('total_weight_lbs', { precision: 12, scale: 2 })
+      .notNull()
+      .default('0.00'),
+    totalPallets: integer('total_pallets').notNull().default(0),
+    dispatchedById: uuid('dispatched_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    notes: text('notes'),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex('shipments_org_number_unique').on(
+      table.organizationId,
+      table.shipmentNumber,
+    ),
+  ],
+)
+
+export const shipmentPallets = pgTable(
+  'shipment_pallets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    shipmentId: uuid('shipment_id')
+      .notNull()
+      .references(() => shipments.id, { onDelete: 'cascade' }),
+    palletId: uuid('pallet_id')
+      .notNull()
+      .references(() => pallets.id, { onDelete: 'cascade' }),
+    truckPosition: integer('truck_position'),
+    loadedAt: timestamp('loaded_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    loadedById: uuid('loaded_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    ...timestamps,
+  },
+  (table) => [
+    index('shipment_pallets_shipment_id_idx').on(table.shipmentId),
+    index('shipment_pallets_pallet_id_idx').on(table.palletId),
+  ],
+)
+
+// ============================================================================
+// 10. Relational Queries Configuration
 // ============================================================================
 
 export const productionJobsRelations = relations(
@@ -1122,6 +1386,7 @@ export const releasesRelations = relations(releases, ({ one, many }) => ({
     references: [productionJobs.id],
   }),
   revisions: many(releaseRevisions),
+  pallets: many(pallets),
 }))
 
 export const releaseRevisionsRelations = relations(
@@ -1133,5 +1398,47 @@ export const releaseRevisionsRelations = relations(
     }),
     panelMarks: many(panelMarks),
     operations: many(operationInstances),
+  }),
+)
+
+export const palletsRelations = relations(pallets, ({ one, many }) => ({
+  release: one(releases, {
+    fields: [pallets.releaseId],
+    references: [releases.id],
+  }),
+  releaseRevision: one(releaseRevisions, {
+    fields: [pallets.releaseRevisionId],
+    references: [releaseRevisions.id],
+  }),
+  items: many(palletItems),
+  shipmentPallets: many(shipmentPallets),
+}))
+
+export const palletItemsRelations = relations(palletItems, ({ one }) => ({
+  pallet: one(pallets, {
+    fields: [palletItems.palletId],
+    references: [pallets.id],
+  }),
+  panelMark: one(panelMarks, {
+    fields: [palletItems.panelMarkId],
+    references: [panelMarks.id],
+  }),
+}))
+
+export const shipmentsRelations = relations(shipments, ({ many }) => ({
+  shipmentPallets: many(shipmentPallets),
+}))
+
+export const shipmentPalletsRelations = relations(
+  shipmentPallets,
+  ({ one }) => ({
+    shipment: one(shipments, {
+      fields: [shipmentPallets.shipmentId],
+      references: [shipments.id],
+    }),
+    pallet: one(pallets, {
+      fields: [shipmentPallets.palletId],
+      references: [pallets.id],
+    }),
   }),
 )

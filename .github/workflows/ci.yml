@@ -1,0 +1,70 @@
+name: CI Quality Gate
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  validate:
+    name: Lint, Typecheck, Unit Tests & Build
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: elward
+          POSTGRES_PASSWORD: elward_local_only
+          POSTGRES_DB: elward_flow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify Code Formatting
+        run: bun run format:check
+
+      - name: Run ESLint
+        run: bun run lint
+
+      - name: Run TypeScript Typecheck
+        run: bun run typecheck
+
+      - name: Apply Database Migrations
+        env:
+          DATABASE_URL: postgresql://elward:elward_local_only@localhost:5432/elward_flow
+        run: bun run db:migrate
+
+      - name: Run Seed Data Verification
+        env:
+          DATABASE_URL: postgresql://elward:elward_local_only@localhost:5432/elward_flow
+        run: bun run seed
+
+      - name: Run Unit Tests
+        env:
+          DATABASE_URL: postgresql://elward:elward_local_only@localhost:5432/elward_flow
+          AUTH_SECRET: local_development_secret_only_32_chars_long!!
+        run: bun run test:unit
+
+      - name: Build Application
+        env:
+          DATABASE_URL: postgresql://elward:elward_local_only@localhost:5432/elward_flow
+          AUTH_SECRET: local_development_secret_only_32_chars_long!!
+        run: bun run build

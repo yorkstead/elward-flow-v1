@@ -46,8 +46,8 @@ test.describe('Active Release Command Center & Application Shell', () => {
     await expect(
       page.getByRole('heading', { name: 'Department Execution Pipeline' }),
     ).toBeVisible()
-    await expect(page.getByText('CNC Routing')).toBeVisible()
-    await expect(page.getByText('ELU Extrusion Cut')).toBeVisible()
+    await expect(page.getByText('CNC Routing').first()).toBeVisible()
+    await expect(page.getByText('ELU Extrusion Cut').first()).toBeVisible()
 
     // 4. Verify Blockers & Exceptions
     await expect(
@@ -62,16 +62,24 @@ test.describe('Active Release Command Center & Application Shell', () => {
     await expect(
       page.getByRole('heading', { name: 'Panel Marks Master' }),
     ).toBeVisible()
-    await expect(page.getByRole('cell', { name: 'P-101' })).toBeVisible()
-    await expect(page.getByRole('cell', { name: 'P-102' })).toBeVisible()
-    await expect(page.getByRole('cell', { name: 'P-103' })).toBeVisible()
+    await expect(
+      page.getByRole('cell', { name: 'P-101', exact: true }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('cell', { name: 'P-102', exact: true }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('cell', { name: 'P-103', exact: true }),
+    ).toBeVisible()
 
     // Filter by P-101
     const filterInput = page.getByPlaceholder(
       'Filter marks, material, color...',
     )
     await filterInput.fill('P-101')
-    await expect(page.getByRole('cell', { name: 'P-101' })).toBeVisible()
+    await expect(
+      page.getByRole('cell', { name: 'P-101', exact: true }).first(),
+    ).toBeVisible()
     await expect(page.getByRole('cell', { name: 'P-102' })).not.toBeVisible()
     await filterInput.clear()
 

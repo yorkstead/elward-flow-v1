@@ -30,6 +30,13 @@ import {
   purchaseOrders,
   purchaseOrderLines,
   inventoryTransactions,
+  qualityInspections,
+  qualityIssues,
+  panelMarkRemakes,
+  pallets,
+  palletItems,
+  shipments,
+  shipmentPallets,
 } from '@/db/schema'
 import { hashPassword } from '@/lib/auth/password'
 import { getEnvironment } from '@/lib/env'
@@ -823,7 +830,226 @@ async function main() {
     },
   ])
 
-  // 8. Initial Activity Events & Audit Logs
+  // 8. Quality Inspections & Non-Conformance Issues
+  console.log('Seeding quality inspections, holds, and RMK/RME remakes...')
+  const [seededRelease] = await db
+    .select()
+    .from(releases)
+    .where(eq(releases.organizationId, organization.id))
+    .limit(1)
+
+  const seededMarks = await db
+    .select()
+    .from(panelMarks)
+    .where(eq(panelMarks.organizationId, organization.id))
+
+  const markP101 = seededMarks.find((m) => m.mark === 'P-101') || seededMarks[0]
+  const markP102 = seededMarks.find((m) => m.mark === 'P-102') || seededMarks[1]
+
+  if (seededRelease && markP102 && markP101) {
+    // QC Inspection on P-102 (Hold placed)
+    await db.insert(qualityInspections).values([
+      {
+        organizationId: organization.id,
+        releaseId: seededRelease.id,
+        panelMarkId: markP102.id,
+        quantity: 1,
+        inspectorId: adminUser.id,
+        specificationVersion: 'v1.2',
+        measurements: {
+          width: 47.98,
+          length: 119.95,
+          diagonal: 129.21,
+          thickness: 0.158,
+          caliperDevice: 'Mitutoyo-Digimatic-02',
+        },
+        disposition: 'Hold',
+        notes:
+          'Flange scratch and slight diagonal deviation on trailing corner',
+        destination: 'QC Hold Staging Area',
+      },
+      {
+        organizationId: organization.id,
+        releaseId: seededRelease.id,
+        panelMarkId: markP101.id,
+        quantity: 24,
+        inspectorId: adminUser.id,
+        specificationVersion: 'v1.2',
+        measurements: {
+          width: 48.0,
+          length: 120.0,
+          diagonal: 129.24,
+          thickness: 0.1575,
+        },
+        disposition: 'Pass',
+        notes: 'All 24 panels within ±0.015" tolerance',
+        destination: 'Pallet Staging',
+      },
+    ])
+
+    const [qiRecord] = await db
+      .insert(qualityIssues)
+      .values({
+        organizationId: organization.id,
+        issueNumber: 'QI-2026-0042',
+        category: 'Surface Defect',
+        severity: 'Moderate',
+        detectionPoint: 'Assembly Station 2',
+        suspectedCause: 'Extrusion clip burr during flange insertion',
+        responsibleDepartment: 'Assembly',
+        ownerId: adminUser.id,
+        dueDate: new Date(Date.now() + 86400000 * 2), // 2 days
+        affectedQuantity: 1,
+        containmentAction: 'Held in bay; deburring tool checked',
+        disposition: 'Hold',
+        status: 'Open',
+        releaseId: seededRelease.id,
+        panelMarkId: markP102.id,
+      })
+      .returning()
+
+    // Sample RME Remake Record (Engineering drawing revision beginning at sequence 51)
+    await db.insert(panelMarkRemakes).values({
+      organizationId: organization.id,
+      remakeType: 'RME',
+      remakeMark: 'P-102-RME-51',
+      sequenceNumber: 51,
+      originalPanelMarkId: markP102.id,
+      qualityIssueId: qiRecord.id,
+      responsibleArea: 'Engineering',
+      materialCost: '145.00',
+      laborHours: '1.50',
+      laborCost: '67.50',
+      outsideCost: '0.00',
+      totalCost: '212.50',
+      approvedById: adminUser.id,
+      status: 'In Routing',
+    })
+    // 9. Palletizing & Logistics Initial Staging
+    // 9. Palletizing & Logistics Initial Staging
+    console.log('Seeding pallets and shipments...')
+    const [pallet1] = await db
+      .insert(pallets)
+      .values({
+        organizationId: organization.id,
+        releaseId: seededRelease.id,
+        palletNumber: 'PAL-54120-R1-001',
+        status: 'Staged',
+        elevation: 'North Elevation',
+        maxHeightInches: '60.00',
+        currentHeightInches: '18.00',
+        maxWeightLbs: '2500.00',
+        currentWeightLbs: '444.00',
+        panelCount: 24,
+        builderId: adminUser.id,
+        completedAt: new Date(),
+        notes: '24 units of P-101 stacked and strapped with corner protectors',
+      })
+      .onConflictDoUpdate({
+        target: [pallets.organizationId, pallets.palletNumber],
+        set: {
+          status: 'Staged',
+          currentWeightLbs: '444.00',
+          panelCount: 24,
+          updatedAt: new Date(),
+        },
+      })
+      .returning()
+
+    const [pallet2] = await db
+      .insert(pallets)
+      .values({
+        organizationId: organization.id,
+        releaseId: seededRelease.id,
+        palletNumber: 'PAL-54120-R1-002',
+        status: 'Building',
+        elevation: 'South Elevation',
+        maxHeightInches: '60.00',
+        currentHeightInches: '9.00',
+        maxWeightLbs: '2500.00',
+        currentWeightLbs: '222.00',
+        panelCount: 12,
+        builderId: adminUser.id,
+        notes: 'In progress building for south elevation panels',
+      })
+      .onConflictDoUpdate({
+        target: [pallets.organizationId, pallets.palletNumber],
+        set: {
+          status: 'Building',
+          currentWeightLbs: '222.00',
+          panelCount: 12,
+          updatedAt: new Date(),
+        },
+      })
+      .returning()
+
+    if (markP101) {
+      await db.delete(palletItems).where(eq(palletItems.palletId, pallet1.id))
+      await db.delete(palletItems).where(eq(palletItems.palletId, pallet2.id))
+      await db.insert(palletItems).values([
+        {
+          organizationId: organization.id,
+          palletId: pallet1.id,
+          panelMarkId: markP101.id,
+          quantity: 24,
+          sequence: 1,
+          stagedById: adminUser.id,
+        },
+        {
+          organizationId: organization.id,
+          palletId: pallet2.id,
+          panelMarkId: markP101.id,
+          quantity: 12,
+          sequence: 1,
+          stagedById: adminUser.id,
+        },
+      ])
+    }
+
+    // Seed Shipment
+    const [shipment1] = await db
+      .insert(shipments)
+      .values({
+        organizationId: organization.id,
+        shipmentNumber: 'SHP-2026-0001',
+        carrier: 'Flatbed Freight Express',
+        trailerNumber: 'FB-5309',
+        driverName: 'David Martinez',
+        driverPhone: '303-555-0192',
+        bolNumber: 'BOL-54120-001',
+        status: 'Loading',
+        destinationAddress:
+          'Tempe Gateway Commercial Center - 4500 Gateway Blvd, Tempe, AZ',
+        totalWeightLbs: '444.00',
+        totalPallets: 1,
+        dispatchedById: adminUser.id,
+        notes: 'Flatbed load 1 of 2. Tarps required for interstate transport.',
+      })
+      .onConflictDoUpdate({
+        target: [shipments.organizationId, shipments.shipmentNumber],
+        set: {
+          status: 'Loading',
+          totalWeightLbs: '444.00',
+          totalPallets: 1,
+          updatedAt: new Date(),
+        },
+      })
+      .returning()
+
+    await db
+      .delete(shipmentPallets)
+      .where(eq(shipmentPallets.shipmentId, shipment1.id))
+
+    await db.insert(shipmentPallets).values({
+      organizationId: organization.id,
+      shipmentId: shipment1.id,
+      palletId: pallet1.id,
+      truckPosition: 1,
+      loadedById: adminUser.id,
+    })
+  }
+
+  // 10. Initial Activity Events & Audit Logs
   await db.insert(activityEvents).values([
     {
       organizationId: organization.id,
@@ -853,10 +1079,10 @@ async function main() {
     {
       organizationId: organization.id,
       actorId: adminUser.id,
-      entityType: 'inventory',
-      entityId: 'PO-94102',
-      actionTitle: 'Purchase Order Issued',
-      summary: 'Issued PO-94102 for 50 ACM sheets to Mitsubishi Chemical.',
+      entityType: 'pallet',
+      entityId: 'PAL-54120-R1-001',
+      actionTitle: 'Pallet Staged',
+      summary: 'Staged Pallet PAL-54120-R1-001 with 24 units of Mark P-101.',
     },
   ])
 
@@ -868,7 +1094,7 @@ async function main() {
     resourceType: 'system',
     resourceId: organization.id,
     reason:
-      'Seeding baseline Prompt 02 through Prompt 07 domain model and configuration rules',
+      'Seeding baseline manufacturing foundation, pallets, shipping, and quality records',
   })
 
   console.log('Database seeding completed successfully.')

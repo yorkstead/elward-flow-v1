@@ -1,0 +1,572 @@
+openapi: 3.0.3
+info:
+  title: Elward Flow Manufacturing Execution & Operational API
+  description: >
+    Production REST API for Elward Flow: release intake, shop-floor execution,
+    real-time scanning, inventory tracking, quality inspection, RMK/RME remakes,
+    pallet staging, truck logistics, and administrative RBAC.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Local Development Environment
+
+paths:
+  # ==========================================================================
+  # Health & Readiness
+  # ==========================================================================
+  /api/health/live:
+    get:
+      summary: Liveness check
+      responses:
+        '200':
+          description: Service is running
+  /api/health/ready:
+    get:
+      summary: Readiness check
+      responses:
+        '200':
+          description: PostgreSQL and storage ready
+        '503':
+          description: Database or storage unavailable
+
+  # ==========================================================================
+  # Release Management
+  # ==========================================================================
+  /api/releases/intake:
+    post:
+      summary: Ingest architectural release package (drawing + takeoff)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                jobId:
+                  type: string
+                  format: uuid
+                releaseNumber:
+                  type: integer
+                drawingFile:
+                  type: string
+                  format: binary
+                takeoffFile:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Release ingested and parsed
+        '400':
+          description: Validation error
+
+  # ==========================================================================
+  # Production Station Routing
+  # ==========================================================================
+  /api/production/assign:
+    post:
+      summary: Assign panel mark workstep to a workstation or operator team
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [instanceId, workstationId]
+              properties:
+                instanceId:
+                  type: string
+                  format: uuid
+                workstationId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Station assigned successfully
+
+  /api/production/first-off:
+    post:
+      summary: Record machine first-off inspection (CNC/ELU)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [instanceId, result]
+              properties:
+                instanceId:
+                  type: string
+                  format: uuid
+                result:
+                  type: string
+                  enum: [passed, passed_with_note, failed]
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: First off recorded
+
+  /api/production/downtime:
+    post:
+      summary: Log workstation machine downtime
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [workstationId, category, reason]
+              properties:
+                workstationId:
+                  type: string
+                  format: uuid
+                category:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        '201':
+          description: Downtime logged
+
+  # ==========================================================================
+  # Inventory Ledger & Procurement
+  # ==========================================================================
+  /api/inventory/receive:
+    post:
+      summary: Receive material goods against purchase order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [itemId, locationId, quantity]
+              properties:
+                itemId:
+                  type: string
+                  format: uuid
+                locationId:
+                  type: string
+                  format: uuid
+                quantity:
+                  type: number
+                lotNumber:
+                  type: string
+      responses:
+        '201':
+          description: Goods received and added to inventory ledger
+
+  /api/inventory/allocate:
+    post:
+      summary: Allocate inventory stock to a specific production release
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [itemId, releaseId, quantity]
+              properties:
+                itemId:
+                  type: string
+                  format: uuid
+                releaseId:
+                  type: string
+                  format: uuid
+                quantity:
+                  type: number
+      responses:
+        '200':
+          description: Stock allocated
+
+  # ==========================================================================
+  # Quality & Remake Console
+  # ==========================================================================
+  /api/quality/inspect:
+    post:
+      summary: Record shop-floor QC inspection with caliper measurements
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [releaseId, panelMarkId, disposition, quantity]
+              properties:
+                releaseId:
+                  type: string
+                  format: uuid
+                panelMarkId:
+                  type: string
+                  format: uuid
+                disposition:
+                  type: string
+                  enum: [Pass, Pass with Note, Hold, Rework, Remake, Scrap]
+                quantity:
+                  type: integer
+                measurements:
+                  type: object
+                notes:
+                  type: string
+      responses:
+        '201':
+          description: Inspection logged and disposition executed
+
+  /api/quality/hold:
+    post:
+      summary: Release quality hold with mandatory supervisor reason
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [qualityIssueId, releaseReason]
+              properties:
+                qualityIssueId:
+                  type: string
+                  format: uuid
+                releaseReason:
+                  type: string
+      responses:
+        '200':
+          description: Hold released
+
+  /api/quality/remake:
+    post:
+      summary: Generate RMK/RME remake beginning at configurable sequence 51
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [originalPanelMarkId, remakeType, responsibleArea]
+              properties:
+                originalPanelMarkId:
+                  type: string
+                  format: uuid
+                remakeType:
+                  type: string
+                  enum: [RMK, RME]
+                responsibleArea:
+                  type: string
+                materialCost:
+                  type: number
+                laborHours:
+                  type: number
+      responses:
+        '201':
+          description: Remake generated with sequence >= 51 and lineage preserved
+
+  # ==========================================================================
+  # Pallets & Staging
+  # ==========================================================================
+  /api/pallets:
+    get:
+      summary: List pallets
+      responses:
+        '200':
+          description: List of pallets
+    post:
+      summary: Create new pallet
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [releaseId]
+              properties:
+                releaseId:
+                  type: string
+                  format: uuid
+                elevation:
+                  type: string
+                maxHeightInches:
+                  type: number
+                maxWeightLbs:
+                  type: number
+      responses:
+        '201':
+          description: Pallet created
+
+  /api/pallets/{id}/items:
+    post:
+      summary: Stack panel mark onto pallet
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [panelMarkId]
+              properties:
+                panelMarkId:
+                  type: string
+                  format: uuid
+                quantity:
+                  type: integer
+      responses:
+        '200':
+          description: Panel mark added to pallet
+
+  /api/pallets/{id}/complete:
+    post:
+      summary: Complete and stage pallet for shipping
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Pallet staged for shipping
+
+  # ==========================================================================
+  # Shipping & Logistics
+  # ==========================================================================
+  /api/shipping:
+    get:
+      summary: List shipments
+      responses:
+        '200':
+          description: List of shipments
+    post:
+      summary: Plan new shipment flatbed load
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                carrier:
+                  type: string
+                trailerNumber:
+                  type: string
+                driverName:
+                  type: string
+                destinationAddress:
+                  type: string
+      responses:
+        '201':
+          description: Shipment planned
+
+  /api/shipping/{id}/pallets:
+    post:
+      summary: Load staged pallet onto trailer position
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [palletId]
+              properties:
+                palletId:
+                  type: string
+                  format: uuid
+                truckPosition:
+                  type: integer
+      responses:
+        '200':
+          description: Pallet loaded onto trailer
+
+  /api/shipping/{id}/dispatch:
+    post:
+      summary: Dispatch shipment and generate Bill of Lading (BOL)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                bolNumber:
+                  type: string
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Shipment dispatched and marked shipped
+
+  # ==========================================================================
+  # Operational Reports
+  # ==========================================================================
+  /api/reports:
+    get:
+      summary: Aggregate operational yield and manufacturing metrics
+      responses:
+        '200':
+          description: Comprehensive yield, throughput, scrap, and logistics metrics
+
+  /api/reports/export:
+    get:
+      summary: Export manufacturing report as CSV
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [yield, throughput, defects, scrap]
+      responses:
+        '200':
+          description: CSV file download
+
+  # ==========================================================================
+  # Administration & Dynamic RBAC
+  # ==========================================================================
+  /api/admin/users:
+    get:
+      summary: List registered plant users and assigned roles
+      responses:
+        '200':
+          description: User list
+    post:
+      summary: Register new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+                isAdmin:
+                  type: boolean
+                roleNames:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: User created
+
+  /api/admin/roles:
+    get:
+      summary: List all system and custom roles
+      responses:
+        '200':
+          description: Role list
+    post:
+      summary: Create new custom role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                permissions:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Custom role created
+    put:
+      summary: Update permissions for an existing role without code changes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [roleId, permissions]
+              properties:
+                roleId:
+                  type: string
+                  format: uuid
+                permissions:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Role permissions updated
+
+  /api/admin/config:
+    get:
+      summary: List active and staged configuration rules
+      responses:
+        '200':
+          description: Configuration rules
+    post:
+      summary: Propose or approve configuration rule change
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, configId]
+              properties:
+                action:
+                  type: string
+                  enum: [propose, approve]
+                configId:
+                  type: string
+                  format: uuid
+                proposedValue:
+                  type: object
+                reason:
+                  type: string
+                approvalNotes:
+                  type: string
+      responses:
+        '200':
+          description: Config updated or activated
+
+  /api/admin/audit:
+    get:
+      summary: Query immutable audit ledger or export to CSV
+      parameters:
+        - name: export
+          in: query
+          schema:
+            type: boolean
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: entityType
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Audit ledger records or CSV stream
