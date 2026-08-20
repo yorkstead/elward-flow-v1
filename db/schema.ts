@@ -559,12 +559,48 @@ export const operationInstances = pgTable('operation_instances', {
   completedQuantity: integer('completed_quantity').notNull().default(0),
   scrapQuantity: integer('scrap_quantity').notNull().default(0),
   holdQuantity: integer('hold_quantity').notNull().default(0),
+  priority: text('priority').notNull().default('Standard'),
+  assignedTeam: text('assigned_team'),
+  startedAt: timestamp('started_at', { withTimezone: true }),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  firstOffInspection: text('first_off_inspection').notNull().default('pending'),
+  firstOffNotes: text('first_off_notes'),
+  machineReference: text('machine_reference'),
+  layoutReference: text('layout_reference'),
+  cartReference: text('cart_reference'),
   assignedWorkstationId: uuid('assigned_workstation_id').references(
     () => workstations.id,
     { onDelete: 'set null' },
   ),
   notes: text('notes'),
   version: integer('version').notNull().default(1),
+  ...timestamps,
+})
+
+// Machine & Shop Downtime Tracking
+export const productionDowntimeEvents = pgTable('production_downtime_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id')
+    .notNull()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  workstationId: uuid('workstation_id').references(() => workstations.id, {
+    onDelete: 'set null',
+  }),
+  department: text('department').notNull(),
+  category: text('category').notNull(), // 'Machine Breakdown' | 'Drawing Conflict' | 'Material Shortage' | 'Tooling Change' | 'Quality Investigation' | 'Other'
+  reason: text('reason').notNull(),
+  notes: text('notes'),
+  startedAt: timestamp('started_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  durationMinutes: integer('duration_minutes'),
+  reportedById: uuid('reported_by_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+  resolvedById: uuid('resolved_by_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
   ...timestamps,
 })
 
