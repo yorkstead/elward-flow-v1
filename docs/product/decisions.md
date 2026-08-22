@@ -48,3 +48,10 @@ belong in an ADR under `docs/adr/`.
 - Reserved corporate blue for primary actions and orange for branded emphasis and focus; operational pass, hold, warning, scrap, and obsolete-revision states retain their independent semantic colors, labels, and icons.
 - Stored a byte-identical copy of the current public corporate PNG locally. Because no approved standalone reversed corporate logo or vector master was verified, dark-shell placements use the authentic full-color logo on a light plate and do not invent a white corporate variant.
 - Selected open-source Roboto Condensed as an application-specific DIN-like heading alternative because reuse rights for the website's DINWeb files were not verified.
+
+## 2026-08-22 — Hosted PostgreSQL environment
+
+- Selected Neon Postgres for hosted production and preview data while retaining Docker PostgreSQL for deterministic local development.
+- Production uses the Neon `main` branch. Vercel previews use a separate Neon `preview` branch so preview activity cannot alter production records.
+- Kept the existing `pg` and Drizzle implementation. Vercel receives Neon's pooled, TLS-required connection URLs as sensitive environment variables; no provider-specific business logic was introduced.
+- Repository-owned Drizzle migrations remain the schema source of truth. Production data and administrator provisioning are intentionally separate from fictional development seed data.
