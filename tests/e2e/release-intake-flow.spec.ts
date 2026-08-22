@@ -87,9 +87,11 @@ test.describe('Release Intake & Revision Control MVP (Prompt 04)', () => {
         name: 'Document Classification & Department Routing',
       }),
     ).toBeVisible()
-    await expect(page.getByText('54125-1_CNC_Table_Layout.pdf')).toBeVisible()
     await expect(
-      page.getByText('54125-1_Extrusions_ELU_Schedule.pdf'),
+      page.getByText('54125-1_CNC_Table_Layout.pdf', { exact: true }),
+    ).toBeVisible()
+    await expect(
+      page.getByText('54125-1_Extrusions_ELU_Schedule.pdf', { exact: true }),
     ).toBeVisible()
 
     // Test page rotation button
