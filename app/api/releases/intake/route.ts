@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
-import { db } from '@/db'
-import { organizations } from '@/db/schema'
 import { IntakeService } from '@/lib/services/intake'
 import { logger } from '@/lib/logger'
+import { DomainService } from '@/lib/services/domain'
+
+const MAX_INTAKE_BYTES = 10 * 1024 * 1024
+const ALLOWED_TYPES = new Set([
+  'application/pdf',
+  'application/zip',
+  'application/x-zip-compressed',
+])
 
 export async function POST(request: Request) {
   try {
@@ -13,40 +19,76 @@ export async function POST(request: Request) {
     }
 
     const formData = await request.formData()
-    const file = formData.get('file') as File | null
-    const manualJobNumber = formData.get('jobNumber') as string | undefined
-    const manualReleaseNumber = formData.get('releaseNumber')
-      ? parseInt(formData.get('releaseNumber') as string, 10)
-      : undefined
-    const manualMaterialFamily = formData.get('materialFamily') as
-      string | undefined
+    const file = formData.get('file')
+    const manualJobNumber = String(formData.get('jobNumber') ?? '').trim()
+    const manualReleaseNumber = Number(formData.get('releaseNumber'))
+    const manualMaterialFamily = String(
+      formData.get('materialFamily') ?? '',
+    ).trim()
 
-    if (!file) {
+    if (!(file instanceof File)) {
       return NextResponse.json(
         { error: 'No package file provided.' },
         { status: 400 },
       )
     }
+    if (file.size < 1 || file.size > MAX_INTAKE_BYTES) {
+      return NextResponse.json(
+        { error: 'Release package must be between 1 byte and 10 MB.' },
+        { status: 413 },
+      )
+    }
+    const lowerName = file.name.toLowerCase()
+    if (
+      (!lowerName.endsWith('.zip') && !lowerName.endsWith('.pdf')) ||
+      (file.type && !ALLOWED_TYPES.has(file.type))
+    ) {
+      return NextResponse.json(
+        { error: 'Release package must be a ZIP archive or PDF.' },
+        { status: 400 },
+      )
+    }
+    if (!DomainService.validateJobNumber(manualJobNumber)) {
+      return NextResponse.json(
+        { error: 'Job number must be exactly five digits.' },
+        { status: 400 },
+      )
+    }
+    if (!Number.isInteger(manualReleaseNumber) || manualReleaseNumber < 1) {
+      return NextResponse.json(
+        { error: 'Release number must be a positive integer.' },
+        { status: 400 },
+      )
+    }
+    if (
+      !DomainService.hasPermission(
+        session.user.roles || [],
+        'create',
+        session.user.isAdmin,
+      )
+    ) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    const [org] = await db.select().from(organizations).limit(1)
-    if (!org) {
+    if (!session.user.organizationId) {
       return NextResponse.json(
-        { error: 'No active organization found.' },
-        { status: 500 },
+        { error: 'Authenticated user has no organization.' },
+        { status: 403 },
       )
     }
 
     const intakeResult = await IntakeService.processUploadPackage({
-      organizationId: org.id,
+      organizationId: session.user.organizationId,
       uploadedById: session.user.id,
+      actingRole: session.user.roles?.[0] || 'Authenticated User',
       filename: file.name,
       buffer,
       contentType: file.type || 'application/octet-stream',
       manualJobNumber,
-      manualReleaseNumber,
+      manualReleaseNumber: manualReleaseNumber,
       manualMaterialFamily,
     })
 

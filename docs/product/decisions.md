@@ -18,3 +18,9 @@ belong in an ADR under `docs/architecture/`.
 - Releases use the compound business key `organization + job_id + release_number`.
 - Implemented staged configuration registry where proposed changes require explicit approval before activating.
 - Elevated overrides mandate an explanation (minimum 5 characters) and write immutable records to `audit_events`.
+
+## 2026-08-22 — Authenticated release-package intake boundary
+
+- Browser intake accepts authenticated ZIP or PDF packages up to 10 MB and preserves both the original package and extracted files through the repository-owned FileStore.
+- ZIP packages are the production-ready path for publishing when they contain a CSV panel takeoff; the system no longer fabricates panel marks when no takeoff data is present.
+- Larger release packages require a future resumable direct-to-object-storage design and are not represented as supported by the current UI.

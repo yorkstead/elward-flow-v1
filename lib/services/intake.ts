@@ -1,5 +1,5 @@
 import { db } from '@/db'
-import { storedFiles } from '@/db/schema'
+import { auditEvents, storedFiles } from '@/db/schema'
 import { getFileStore } from '@/lib/files/minio-file-store'
 import { sha256 } from '@/lib/files/hash'
 import {
@@ -59,6 +59,7 @@ export class IntakeService {
   public static async processUploadPackage(params: {
     organizationId: string
     uploadedById: string
+    actingRole: string
     filename: string
     buffer: Buffer
     contentType: string
@@ -69,6 +70,7 @@ export class IntakeService {
     const {
       organizationId,
       uploadedById,
+      actingRole,
       filename,
       buffer,
       contentType,
@@ -77,9 +79,24 @@ export class IntakeService {
       manualMaterialFamily,
     } = params
 
+    const lowerFilename = filename.toLowerCase()
+    const isZip = lowerFilename.endsWith('.zip') || contentType.includes('zip')
+    const isPdf =
+      lowerFilename.endsWith('.pdf') || contentType === 'application/pdf'
+
+    if (!isZip && !isPdf) {
+      throw new Error('Release package must be a ZIP archive or PDF.')
+    }
+    if (isZip && (buffer[0] !== 0x50 || buffer[1] !== 0x4b)) {
+      throw new Error('Uploaded ZIP archive has an invalid file signature.')
+    }
+    if (isPdf && buffer.subarray(0, 5).toString('ascii') !== '%PDF-') {
+      throw new Error('Uploaded PDF has an invalid file signature.')
+    }
+
     const fileStore = getFileStore()
     const rawDigest = sha256(buffer)
-    const rawObjectKey = `originals/intake/${rawDigest}-${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+    const rawObjectKey = `originals/${organizationId}/intake/${rawDigest}-${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`
 
     // 1. Store the original upload immutably
     await fileStore.putImmutable({
@@ -127,18 +144,13 @@ export class IntakeService {
     const processedFiles: IntakeFileItem[] = []
     const parsedMarks: ParsedPanelMarkInput[] = []
 
-    const isZip =
-      filename.toLowerCase().endsWith('.zip') ||
-      contentType.includes('zip') ||
-      contentType.includes('compressed')
-
     if (isZip) {
       // 3. Safely Extract ZIP contents
       const extracted = await DocumentClassifier.safeExtractZip(buffer)
 
       for (const item of extracted) {
         const itemDigest = sha256(item.buffer)
-        const itemKey = `originals/releases/${inferredJobNumber}-${inferredReleaseNumber}/${itemDigest}-${item.filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+        const itemKey = `originals/${organizationId}/releases/${inferredJobNumber}-${inferredReleaseNumber}/${itemDigest}-${item.filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`
 
         await fileStore.putImmutable({
           key: itemKey,
@@ -172,19 +184,30 @@ export class IntakeService {
         })
 
         // Check if file is a CSV takeoff schedule
-        if (
-          item.filename.toLowerCase().endsWith('.csv') ||
-          item.classification.category === 'takeoff'
-        ) {
+        if (item.filename.toLowerCase().endsWith('.csv')) {
           const csvText = item.buffer.toString('utf-8')
           const lines = csvText.split(/\r?\n/).filter((l) => l.trim())
+          const headers = (lines[0] || '')
+            .split(',')
+            .map((header) => header.trim().toLowerCase())
+          if (headers[0] !== 'mark' || headers[2] !== 'quantity') {
+            throw new Error(
+              `Takeoff '${item.filename}' must begin with mark, description, quantity columns.`,
+            )
+          }
           for (let i = 1; i < lines.length; i++) {
             const cols = lines[i].split(',').map((c) => c.trim())
             if (cols[0]) {
+              const quantity = Number(cols[2])
+              if (!Number.isInteger(quantity) || quantity < 1) {
+                throw new Error(
+                  `Takeoff '${item.filename}' has an invalid quantity for mark '${cols[0]}'.`,
+                )
+              }
               parsedMarks.push({
                 mark: cols[0],
                 description: cols[1] || `Panel Mark ${cols[0]}`,
-                quantity: parseInt(cols[2] || '1', 10) || 1,
+                quantity,
                 materialFamily: cols[3] || materialFamily,
                 color: cols[4] || 'Bone White',
                 thickness: cols[5] || '0.1570',
@@ -211,43 +234,13 @@ export class IntakeService {
       })
     }
 
-    // If no marks were parsed from CSV, generate standard baseline marks from filename or defaults
-    if (parsedMarks.length === 0) {
-      parsedMarks.push(
-        {
-          mark: 'P-101',
-          description: 'Typical Spandrel Panel Type A',
-          quantity: 48,
-          materialFamily,
-          color: 'Bone White',
-          thickness: '0.1570',
-          width: '48.0000',
-          length: '120.0000',
-          dimensionUnit: 'in',
-        },
-        {
-          mark: 'P-102',
-          description: 'Corner Return Panel Type B',
-          quantity: 24,
-          materialFamily,
-          color: 'Bone White',
-          thickness: '0.1570',
-          width: '48.0000',
-          length: '96.0000',
-          dimensionUnit: 'in',
-        },
-        {
-          mark: 'P-103',
-          description: 'Parapet Cap Panel Type C',
-          quantity: 12,
-          materialFamily,
-          color: 'Charcoal Gray',
-          thickness: '0.1570',
-          width: '36.0000',
-          length: '144.0000',
-          dimensionUnit: 'in',
-        },
-      )
+    const uniqueMarks = new Set<string>()
+    for (const mark of parsedMarks) {
+      const normalizedMark = mark.mark.toUpperCase()
+      if (uniqueMarks.has(normalizedMark)) {
+        throw new Error(`Duplicate panel mark '${mark.mark}' in takeoff data.`)
+      }
+      uniqueMarks.add(normalizedMark)
     }
 
     // Check missing expected document categories
@@ -262,6 +255,27 @@ export class IntakeService {
     const hasUncertainClassifications = processedFiles.some(
       (f) => f.classification.isUncertain,
     )
+
+    await db.insert(auditEvents).values({
+      organizationId,
+      actorId: uploadedById,
+      actingRole,
+      action: 'RELEASE_PACKAGE_INGESTED',
+      resourceType: 'stored_file',
+      resourceId: rawStored.id,
+      newState: {
+        originalPackageName: filename,
+        sha256: rawDigest,
+        jobNumber: inferredJobNumber,
+        releaseNumber: inferredReleaseNumber,
+        documentCount: processedFiles.length,
+        markCount: parsedMarks.length,
+      },
+      quantity: String(processedFiles.length),
+      condition: hasUncertainClassifications ? 'needs_review' : 'classified',
+      sourceRevision: inferredRevisionLabel,
+      reason: 'Authenticated release intake upload',
+    })
 
     return {
       rawPackageFileId: rawStored.id,

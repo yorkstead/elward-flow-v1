@@ -188,14 +188,50 @@ export class RevisionControlService {
     } = params
 
     // 1. Authorization check
-    DomainService.hasPermission(
-      actor.roles,
-      'releases.approve',
-      actor.isAdmin ?? false,
-    )
+    if (
+      !DomainService.hasPermission(
+        actor.roles,
+        'approve',
+        actor.isAdmin ?? false,
+      )
+    ) {
+      throw new Error(
+        'Security Exception: Unauthorized to publish release revisions.',
+      )
+    }
 
     // 2. Validate Job Number (5 digits)
-    DomainService.validateJobNumber(jobNumber)
+    if (!DomainService.validateJobNumber(jobNumber)) {
+      throw new Error(
+        'Validation Exception: Job number must be exactly five digits.',
+      )
+    }
+    if (!Number.isInteger(releaseNumber) || releaseNumber < 1) {
+      throw new Error(
+        'Validation Exception: Release number must be a positive integer.',
+      )
+    }
+    if (marks.length === 0) {
+      throw new Error(
+        'Validation Exception: At least one extracted panel mark is required.',
+      )
+    }
+    if (files.length === 0) {
+      throw new Error(
+        'Validation Exception: At least one controlled document is required.',
+      )
+    }
+    for (const mark of marks) {
+      if (
+        !mark.mark.trim() ||
+        !Number.isInteger(mark.quantity) ||
+        mark.quantity < 1
+      ) {
+        throw new Error(
+          'Validation Exception: Every panel mark requires an identifier and positive integer quantity.',
+        )
+      }
+    }
 
     return await db.transaction(async (tx) => {
       // Find or create customer
@@ -399,7 +435,6 @@ export class RevisionControlService {
           })
           .returning()
 
-        let fileRecordId = f.storedFileId
         const isUuid =
           /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
             f.storedFileId,
@@ -410,43 +445,26 @@ export class RevisionControlService {
           const [found] = await tx
             .select()
             .from(storedFiles)
-            .where(eq(storedFiles.id, f.storedFileId))
+            .where(
+              and(
+                eq(storedFiles.id, f.storedFileId),
+                eq(storedFiles.organizationId, organizationId),
+              ),
+            )
             .limit(1)
           existingFile = found
         }
 
-        const objKey = `originals/releases/${jobNumber}-${releaseNumber}/${f.sha256 || 'sample'}-${f.originalName.replace(/[^a-zA-Z0-9._-]/g, '_')}`
-
-        const [existingByKey] = await tx
-          .select()
-          .from(storedFiles)
-          .where(eq(storedFiles.objectKey, objKey))
-          .limit(1)
-
-        if (existingByKey) {
-          fileRecordId = existingByKey.id
-        } else if (!existingFile) {
-          const [createdFile] = await tx
-            .insert(storedFiles)
-            .values({
-              organizationId,
-              objectKey: objKey,
-              originalName: f.originalName,
-              contentType: f.contentType || 'application/pdf',
-              byteSize: f.byteSize || 1024,
-              sha256:
-                f.sha256 ||
-                '0000000000000000000000000000000000000000000000000000000000000000',
-              uploadedById: actor.userId,
-            })
-            .returning()
-          fileRecordId = createdFile.id
+        if (!existingFile) {
+          throw new Error(
+            `Validation Exception: Controlled file '${f.originalName}' is not a tenant-owned immutable upload.`,
+          )
         }
 
         await tx.insert(documentRevisions).values({
           documentId: doc.id,
           releaseRevisionId: newRevision.id,
-          storedFileId: fileRecordId,
+          storedFileId: existingFile.id,
           revisionLabel,
           status: 'current',
         })

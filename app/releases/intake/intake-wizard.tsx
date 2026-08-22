@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
+  DocumentClassifier,
   STANDARD_DOCUMENT_CATEGORIES,
   type DocumentCategoryCode,
 } from '@/lib/services/classifier'
@@ -74,6 +75,17 @@ export function IntakeWizard({
   const [dispositions] = React.useState<Record<string, ImpactDispositionInput>>(
     {},
   )
+  const unresolvedMissingCategories = React.useMemo(
+    () =>
+      DocumentClassifier.checkMissingExpectedCategories(
+        materialFamily,
+        files.map((file) => file.classification.category),
+      ),
+    [files, materialFamily],
+  )
+  const hasUncertainClassifications = files.some(
+    (file) => file.classification.isUncertain,
+  )
 
   // 1. Handle File Upload
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,141 +123,6 @@ export function IntakeWizard({
       setStep(2)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed')
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  // Handle Mock Upload for instant testing
-  const handleMockUpload = async () => {
-    setUploading(true)
-    setError(null)
-    try {
-      // Simulate quick extraction with standard release package
-      const mockMarks: ParsedPanelMarkInput[] = [
-        {
-          mark: 'P-101',
-          description: 'Spandrel Panel Type A',
-          quantity: 48,
-          materialFamily,
-          color: 'Bone White',
-          thickness: '0.1570',
-          width: '48.0000',
-          length: '120.0000',
-          dimensionUnit: 'in',
-        },
-        {
-          mark: 'P-102',
-          description: 'Corner Return Panel Type B',
-          quantity: 24,
-          materialFamily,
-          color: 'Bone White',
-          thickness: '0.1570',
-          width: '48.0000',
-          length: '96.0000',
-          dimensionUnit: 'in',
-        },
-        {
-          mark: 'P-103',
-          description: 'Parapet Cap Panel Type C',
-          quantity: 12,
-          materialFamily,
-          color: 'Charcoal Gray',
-          thickness: '0.1570',
-          width: '36.0000',
-          length: '144.0000',
-          dimensionUnit: 'in',
-        },
-      ]
-
-      const mockFiles: IntakeFileItem[] = [
-        {
-          storedFileId: 'mock-file-1',
-          originalName: '54120-1_CNC_Table_Layout.pdf',
-          relativePath: '54120-1_CNC_Table_Layout.pdf',
-          byteSize: 1450000,
-          contentType: 'application/pdf',
-          sha256: 'a1b2c3d4e5f601',
-          classification: {
-            category: 'cnc_layout',
-            name: 'CNC / Table Layout',
-            confidence: 0.95,
-            matchReason: "Matched pattern 'cnc_layout'",
-            isUncertain: false,
-            defaultDepartment: 'CNC',
-          },
-          pageRotation: 0,
-        },
-        {
-          storedFileId: 'mock-file-2',
-          originalName: '54120-1_Cut_Drawings_P101_P103.pdf',
-          relativePath: '54120-1_Cut_Drawings_P101_P103.pdf',
-          byteSize: 2200000,
-          contentType: 'application/pdf',
-          sha256: 'b2c3d4e5f6a102',
-          classification: {
-            category: 'cut_drawing',
-            name: 'Cut Drawing / Sheet',
-            confidence: 0.95,
-            matchReason: "Matched pattern 'cut_drawing'",
-            isUncertain: false,
-            defaultDepartment: 'CNC',
-          },
-          pageRotation: 0,
-        },
-        {
-          storedFileId: 'mock-file-3',
-          originalName: '54120-1_Extrusions_ELU_Schedule.pdf',
-          relativePath: '54120-1_Extrusions_ELU_Schedule.pdf',
-          byteSize: 980000,
-          contentType: 'application/pdf',
-          sha256: 'c3d4e5f6a1b203',
-          classification: {
-            category: 'extrusion_cut_list',
-            name: 'Extrusion Cut List',
-            confidence: 0.95,
-            matchReason: "Matched pattern 'extrusion_cut_list'",
-            isUncertain: false,
-            defaultDepartment: 'ELU',
-          },
-          pageRotation: 0,
-        },
-        {
-          storedFileId: 'mock-file-4',
-          originalName: '54120-1_Assembly_Details.pdf',
-          relativePath: '54120-1_Assembly_Details.pdf',
-          byteSize: 1750000,
-          contentType: 'application/pdf',
-          sha256: 'd4e5f6a1b2c304',
-          classification: {
-            category: 'assembly_drawing',
-            name: 'Assembly Drawing',
-            confidence: 0.95,
-            matchReason: "Matched pattern 'assembly_drawing'",
-            isUncertain: false,
-            defaultDepartment: 'Assembly',
-          },
-          pageRotation: 0,
-        },
-      ]
-
-      setIntakeData({
-        rawPackageFileId: 'mock-raw-pkg',
-        rawSha256: 'e5f6a1b2c3d405',
-        originalPackageName: `${manualJobNumber}_Release_${manualReleaseNumber}_Package.zip`,
-        byteSize: 6380000,
-        inferredJobNumber: manualJobNumber,
-        inferredReleaseNumber: manualReleaseNumber,
-        inferredRevisionLabel: revisionLabel,
-        materialFamily,
-        files: mockFiles,
-        marks: mockMarks,
-        missingCategories: [],
-        hasUncertainClassifications: false,
-      })
-      setFiles(mockFiles)
-      setMarks(mockMarks)
-      setStep(2)
     } finally {
       setUploading(false)
     }
@@ -335,8 +212,8 @@ export function IntakeWizard({
           <button
             key={s.num}
             type="button"
-            disabled={!intakeData && s.num > 1}
-            onClick={() => intakeData && setStep(s.num as typeof step)}
+            disabled={s.num > step}
+            onClick={() => s.num <= step && setStep(s.num as typeof step)}
             className={`flex items-center gap-2 rounded-lg p-2 text-left transition-colors ${
               step === s.num
                 ? 'bg-blue-50 font-bold text-blue-700'
@@ -455,18 +332,21 @@ export function IntakeWizard({
           <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/70 p-8 text-center transition-colors hover:bg-slate-100/70">
             <FileArchive className="h-10 w-10 text-slate-400" />
             <p className="mt-3 text-sm font-bold text-slate-800">
-              Drag and drop release ZIP or PDF here
+              Select a release ZIP or PDF package
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              Accepts .ZIP, .PDF, .DXF, .CSV up to 500 MB
+              ZIP packages may include PDFs and a CSV panel takeoff; maximum 10
+              MB
             </p>
 
             <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
               <label className="cursor-pointer">
                 <Input
                   type="file"
-                  accept=".zip,.pdf,.dxf,.csv"
+                  accept=".zip,.pdf"
+                  aria-label="Release package file"
                   onChange={handleFileUpload}
+                  disabled={uploading}
                   className="hidden"
                 />
                 <Button
@@ -478,16 +358,6 @@ export function IntakeWizard({
                   {uploading ? 'Processing Archive…' : 'Browse Local Files'}
                 </Button>
               </label>
-
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleMockUpload}
-                disabled={uploading}
-                className="text-xs"
-              >
-                Load Standard Sample Release
-              </Button>
             </div>
           </div>
         </div>
@@ -507,6 +377,12 @@ export function IntakeWizard({
                 Review extracted job specifications and mark quantities before
                 document routing.
               </p>
+              {intakeData && (
+                <p className="mt-1 font-mono text-[11px] text-slate-500">
+                  Source: {intakeData.originalPackageName} • SHA-256:{' '}
+                  {intakeData.rawSha256.slice(0, 16)}…
+                </p>
+              )}
             </div>
             <Badge className="bg-blue-700 text-xs text-white">
               Key: {manualJobNumber}-{manualReleaseNumber} (Rev {revisionLabel})
@@ -545,42 +421,51 @@ export function IntakeWizard({
               </h3>
             </div>
 
-            <div className="overflow-x-auto rounded-lg border border-slate-200">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-slate-200 bg-slate-50 font-semibold text-slate-700">
-                  <tr>
-                    <th className="px-3 py-2">Mark ID</th>
-                    <th className="px-3 py-2">Description</th>
-                    <th className="px-3 py-2 text-center">Qty</th>
-                    <th className="px-3 py-2">Material</th>
-                    <th className="px-3 py-2">Color</th>
-                    <th className="px-3 py-2">Dimensions (W × L)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {marks.map((m, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/80">
-                      <td className="px-3 py-2 font-mono font-bold text-slate-900">
-                        {m.mark}
-                      </td>
-                      <td className="px-3 py-2 text-slate-700">
-                        {m.description}
-                      </td>
-                      <td className="px-3 py-2 text-center font-bold text-slate-900">
-                        {m.quantity}
-                      </td>
-                      <td className="px-3 py-2 text-slate-700">
-                        {m.materialFamily}
-                      </td>
-                      <td className="px-3 py-2 text-slate-700">{m.color}</td>
-                      <td className="px-3 py-2 font-mono text-slate-700">
-                        {m.width}&quot; × {m.length}&quot;
-                      </td>
+            {marks.length === 0 && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900">
+                No panel marks were extracted. Upload a ZIP containing a CSV
+                takeoff before this release can be published.
+              </div>
+            )}
+
+            {marks.length > 0 && (
+              <div className="overflow-x-auto rounded-lg border border-slate-200">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b border-slate-200 bg-slate-50 font-semibold text-slate-700">
+                    <tr>
+                      <th className="px-3 py-2">Mark ID</th>
+                      <th className="px-3 py-2">Description</th>
+                      <th className="px-3 py-2 text-center">Qty</th>
+                      <th className="px-3 py-2">Material</th>
+                      <th className="px-3 py-2">Color</th>
+                      <th className="px-3 py-2">Dimensions (W × L)</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {marks.map((m, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/80">
+                        <td className="px-3 py-2 font-mono font-bold text-slate-900">
+                          {m.mark}
+                        </td>
+                        <td className="px-3 py-2 text-slate-700">
+                          {m.description}
+                        </td>
+                        <td className="px-3 py-2 text-center font-bold text-slate-900">
+                          {m.quantity}
+                        </td>
+                        <td className="px-3 py-2 text-slate-700">
+                          {m.materialFamily}
+                        </td>
+                        <td className="px-3 py-2 text-slate-700">{m.color}</td>
+                        <td className="px-3 py-2 font-mono text-slate-700">
+                          {m.width}&quot; × {m.length}&quot;
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-between border-t border-slate-100 pt-4">
@@ -595,6 +480,7 @@ export function IntakeWizard({
             <Button
               size="sm"
               onClick={() => setStep(3)}
+              disabled={marks.length === 0}
               className="bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700"
             >
               Continue to Document Control{' '}
@@ -621,22 +507,21 @@ export function IntakeWizard({
           </div>
 
           {/* Missing Categories Alert */}
-          {intakeData?.missingCategories &&
-            intakeData.missingCategories.length > 0 && (
-              <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900">
-                <div className="flex items-center gap-2 font-bold text-amber-950">
-                  <AlertTriangle className="h-4 w-4 text-amber-700" />
-                  <span>Missing Expected Documents for {materialFamily}</span>
-                </div>
-                <ul className="mt-2 list-inside list-disc space-y-1">
-                  {intakeData.missingCategories.map((c) => (
-                    <li key={c.code}>
-                      <strong>{c.name}</strong> — {c.requiredFor}
-                    </li>
-                  ))}
-                </ul>
+          {unresolvedMissingCategories.length > 0 && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900">
+              <div className="flex items-center gap-2 font-bold text-amber-950">
+                <AlertTriangle className="h-4 w-4 text-amber-700" />
+                <span>Missing Expected Documents for {materialFamily}</span>
               </div>
-            )}
+              <ul className="mt-2 list-inside list-disc space-y-1">
+                {unresolvedMissingCategories.map((c) => (
+                  <li key={c.code}>
+                    <strong>{c.name}</strong> — {c.requiredFor}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Files List */}
           <div className="space-y-3">
@@ -718,6 +603,11 @@ export function IntakeWizard({
             <Button
               size="sm"
               onClick={() => setStep(4)}
+              disabled={
+                files.length === 0 ||
+                hasUncertainClassifications ||
+                unresolvedMissingCategories.length > 0
+              }
               className="bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700"
             >
               Continue to Revision Impact{' '}

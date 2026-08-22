@@ -41,23 +41,31 @@ paths:
           multipart/form-data:
             schema:
               type: object
+              required: [file, jobNumber, releaseNumber, materialFamily]
               properties:
-                jobId:
+                file:
                   type: string
-                  format: uuid
+                  format: binary
+                  description: ZIP or PDF release package, maximum 10 MB
+                jobNumber:
+                  type: string
+                  pattern: '^\d{5}$'
                 releaseNumber:
                   type: integer
-                drawingFile:
+                  minimum: 1
+                materialFamily:
                   type: string
-                  format: binary
-                takeoffFile:
-                  type: string
-                  format: binary
       responses:
-        '201':
-          description: Release ingested and parsed
+        '200':
+          description: Release package stored, classified, and parsed
         '400':
           description: Validation error
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient permission or organization context
+        '413':
+          description: Package exceeds 10 MB
 
   # ==========================================================================
   # Production Station Routing

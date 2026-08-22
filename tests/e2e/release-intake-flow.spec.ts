@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
+import JSZip from 'jszip'
 
 test.describe('Release Intake & Revision Control MVP (Prompt 04)', () => {
   test.setTimeout(60_000)
@@ -33,16 +34,37 @@ test.describe('Release Intake & Revision Control MVP (Prompt 04)', () => {
       page.getByRole('heading', { name: 'Release Intake & Revision Control' }),
     ).toBeVisible()
 
-    // 3. Step 1: Upload / Load Standard Sample Release
+    // 3. Step 1: Upload a real release archive with controlled documents and takeoff data.
     const jobInput = page.getByLabel(/5-Digit Job Number/i)
     await jobInput.fill('54125')
 
     const releaseInput = page.getByLabel(/Release Number/i)
     await releaseInput.fill('1')
 
-    await page
-      .getByRole('button', { name: 'Load Standard Sample Release' })
-      .click()
+    const zip = new JSZip()
+    const fictionalPdf =
+      '%PDF-1.4\n% Fictional Elward Flow test document\n%%EOF'
+    zip.file('54125-1_CNC_Table_Layout.pdf', fictionalPdf)
+    zip.file('54125-1_Cut_Drawings_P101_P103.pdf', fictionalPdf)
+    zip.file('54125-1_Extrusions_ELU_Schedule.pdf', fictionalPdf)
+    zip.file('54125-1_Assembly_Details.pdf', fictionalPdf)
+    zip.file('54125-1_North_Elevation.pdf', fictionalPdf)
+    zip.file(
+      '54125-1_Panel_Takeoff.csv',
+      [
+        'mark,description,quantity,materialFamily,color,thickness,width,length',
+        'P-101,Spandrel Panel Type A,48,ACM,Bone White,0.1570,48.0000,120.0000',
+        'P-102,Corner Return Panel Type B,24,ACM,Bone White,0.1570,48.0000,96.0000',
+        'P-103,Parapet Cap Panel Type C,12,ACM,Charcoal Gray,0.1570,36.0000,144.0000',
+      ].join('\n'),
+    )
+    const archive = await zip.generateAsync({ type: 'nodebuffer' })
+
+    await page.getByLabel('Release package file').setInputFiles({
+      name: '54125_Release_1_Rev_A.zip',
+      mimeType: 'application/zip',
+      buffer: archive,
+    })
 
     // 4. Step 2: Verify Metadata & Panel Marks
     await expect(

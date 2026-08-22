@@ -20,8 +20,9 @@ Ingest engineering takeoff files, architectural drawings, and panel marks into a
    - Choose the 5-digit job (e.g. `54120 - Tempe Gateway Commercial Center`).
    - Specify the release sequence (e.g. `Release 1` creates unique business key `54120-1`).
 3. **Upload Engineering Files**:
-   - **Takeoff CSV/Excel**: Extracted BOM and panel marks list (`P-101`, `P-102`, dimensions, color, material family).
-   - **Architectural Drawing PDF**: Master elevation and fabrication drawings.
+   - Upload a ZIP package up to 10 MB containing the controlled PDFs and a CSV panel takeoff.
+   - The CSV columns are `mark`, `description`, `quantity`, `materialFamily`, `color`, `thickness`, `width`, and `length`.
+   - A standalone PDF is preserved and classified, but publishing remains blocked until panel marks are supplied through a CSV takeoff package.
 4. **Classification & Verification**:
    - The automated classifier reviews lines, detects material types (e.g. Reynobond 4mm ACM, Swisspearl, Trespa), and extracts panel marks.
 5. **Publish Revision**:
