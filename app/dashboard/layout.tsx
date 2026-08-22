@@ -23,7 +23,7 @@ export default async function DashboardLayout({
         isAdmin: session.user.isAdmin,
         roles: session.user.roles,
       }}
-      siteName="Fictional Primary Plant"
+      siteName="Shop"
       timezone="America/Denver"
       onSignOut={handleSignOut}
     >

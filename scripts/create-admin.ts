@@ -37,10 +37,11 @@ async function main() {
       organizationId: org.id,
       name: 'Fictional Primary Plant',
       code: 'LOCAL',
+      isProductionFacility: true,
     })
     .onConflictDoUpdate({
       target: [sites.organizationId, sites.code],
-      set: { updatedAt: new Date() },
+      set: { isProductionFacility: true, updatedAt: new Date() },
     })
     .returning()
 

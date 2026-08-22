@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { db } from '@/db'
-import { organizations, sites } from '@/db/schema'
+import { sites } from '@/db/schema'
 import { RevisionControlService } from '@/lib/services/revision'
 import { logger } from '@/lib/logger'
+import { and, eq } from 'drizzle-orm'
 
 export async function POST(request: Request) {
   try {
@@ -27,15 +28,30 @@ export async function POST(request: Request) {
       impactDispositions = [],
     } = body
 
-    const [org] = await db.select().from(organizations).limit(1)
-    if (!org) {
+    if (!session.user.organizationId) {
       return NextResponse.json(
-        { error: 'No active organization found.' },
-        { status: 500 },
+        { error: 'Authenticated user has no organization.' },
+        { status: 403 },
       )
     }
 
-    const [site] = await db.select().from(sites).limit(1)
+    const [site] = await db
+      .select()
+      .from(sites)
+      .where(
+        and(
+          eq(sites.organizationId, session.user.organizationId),
+          eq(sites.isProductionFacility, true),
+        ),
+      )
+      .limit(1)
+
+    if (!site) {
+      return NextResponse.json(
+        { error: 'No production facility is configured.' },
+        { status: 409 },
+      )
+    }
 
     const result = await RevisionControlService.publishRevision(
       {
@@ -45,8 +61,8 @@ export async function POST(request: Request) {
         isAdmin: session.user.isAdmin,
       },
       {
-        organizationId: org.id,
-        siteId: site ? site.id : org.id,
+        organizationId: session.user.organizationId,
+        siteId: site.id,
         jobNumber,
         releaseNumber: parseInt(releaseNumber, 10) || 1,
         revisionLabel,

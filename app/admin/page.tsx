@@ -36,7 +36,7 @@ export default async function AdminPage() {
         isAdmin: session.user.isAdmin,
         roles: session.user.roles,
       }}
-      siteName="Fictional Primary Plant"
+      siteName="Shop"
       timezone="America/Denver"
       onSignOut={handleSignOut}
     >

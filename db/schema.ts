@@ -44,6 +44,9 @@ export const sites = pgTable(
       .references(() => organizations.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     code: text('code').notNull(),
+    isProductionFacility: boolean('is_production_facility')
+      .notNull()
+      .default(false),
     timezone: text('timezone').notNull().default('America/Denver'),
     ...timestamps,
   },

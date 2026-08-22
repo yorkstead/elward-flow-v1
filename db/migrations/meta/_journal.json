@@ -50,6 +50,13 @@
       "when": 1787197916942,
       "tag": "0006_cuddly_thor",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787403721386,
+      "tag": "0007_cold_sleeper",
+      "breakpoints": true
     }
   ]
 }

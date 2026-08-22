@@ -70,3 +70,10 @@ belong in an ADR under `docs/adr/`.
 - An organization with no releases receives a guided first-run state linking to controlled release intake and the releases register; it does not display a fictional job error.
 - Explicit links to missing jobs or releases continue to show a scoped not-found state rather than silently selecting different production work.
 - Removed fictional blocker, activity, and panel-count fallbacks from the active-release command center. Empty operational sections now report only the absence of recorded data and never infer readiness from missing records.
+
+## 2026-08-22 — Facility model
+
+- Elward Systems has two operating sites: `Shop` and `Office`.
+- `Shop` is the only production facility. Release publishing and downstream manufacturing execution must resolve a site explicitly marked for production and must never fall back to an arbitrary first site or an organization identifier.
+- `Office` is a non-production site. Office users may perform authorized planning, administration, reporting, and other non-manufacturing work, but Office cannot be selected as the facility that executes production.
+- Street addresses and any finer department or workstation assignments remain unverified and are not invented here.

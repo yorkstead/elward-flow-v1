@@ -4,7 +4,7 @@ import { db } from '@/db'
 import { sites } from '@/db/schema'
 import { RevisionControlService } from '@/lib/services/revision'
 import { logger } from '@/lib/logger'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 
 export async function POST(request: Request) {
   try {
@@ -38,8 +38,20 @@ export async function POST(request: Request) {
     const [site] = await db
       .select()
       .from(sites)
-      .where(eq(sites.organizationId, session.user.organizationId))
+      .where(
+        and(
+          eq(sites.organizationId, session.user.organizationId),
+          eq(sites.isProductionFacility, true),
+        ),
+      )
       .limit(1)
+
+    if (!site) {
+      return NextResponse.json(
+        { error: 'No production facility is configured.' },
+        { status: 409 },
+      )
+    }
 
     const result = await RevisionControlService.publishRevision(
       {
@@ -50,7 +62,7 @@ export async function POST(request: Request) {
       },
       {
         organizationId: session.user.organizationId,
-        siteId: site ? site.id : session.user.organizationId,
+        siteId: site.id,
         jobNumber,
         releaseNumber: parseInt(releaseNumber, 10) || 1,
         revisionLabel,

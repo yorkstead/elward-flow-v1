@@ -70,11 +70,16 @@ async function main() {
       organizationId: organization.id,
       name: 'Fictional Primary Plant',
       code: 'LOCAL',
+      isProductionFacility: true,
       timezone: 'America/Denver',
     })
     .onConflictDoUpdate({
       target: [sites.organizationId, sites.code],
-      set: { name: 'Fictional Primary Plant', updatedAt: new Date() },
+      set: {
+        name: 'Fictional Primary Plant',
+        isProductionFacility: true,
+        updatedAt: new Date(),
+      },
     })
     .returning()
 

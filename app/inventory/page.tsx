@@ -130,7 +130,7 @@ export default async function InventoryPage() {
         isAdmin: session.user.isAdmin,
         roles: session.user.roles,
       }}
-      siteName="Fictional Primary Plant"
+      siteName="Shop"
       timezone="America/Denver"
       onSignOut={handleSignOut}
     >
