@@ -179,9 +179,24 @@ async function main() {
 
   let adminUser = existingUsers[0]
   if (adminUser) {
-    console.log(
-      `Local administrator already exists: ${environment.ADMIN_EMAIL}. Password retained.`,
-    )
+    if (environment.NODE_ENV === 'test' && environment.E2E_ADMIN_PASSWORD) {
+      const [updated] = await db
+        .update(users)
+        .set({
+          passwordHash: await hashPassword(environment.E2E_ADMIN_PASSWORD),
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, adminUser.id))
+        .returning()
+      adminUser = updated
+      console.log(
+        `Local administrator test credentials refreshed: ${environment.ADMIN_EMAIL}.`,
+      )
+    } else {
+      console.log(
+        `Local administrator already exists: ${environment.ADMIN_EMAIL}. Password retained.`,
+      )
+    }
   } else {
     const [created] = await db
       .insert(users)

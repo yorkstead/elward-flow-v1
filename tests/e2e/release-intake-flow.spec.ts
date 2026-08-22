@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import JSZip from 'jszip'
+import { randomBytes } from 'node:crypto'
 import { requireE2EAdminPassword } from './support/environment'
 
 test.describe('Release Intake & Revision Control MVP (Prompt 04)', () => {
@@ -138,5 +139,37 @@ test.describe('Release Intake & Revision Control MVP (Prompt 04)', () => {
     await page.goto('/releases/intake')
     const accessibilityScanResults = await new AxeBuilder({ page }).analyze()
     expect(accessibilityScanResults.violations).toEqual([])
+  })
+
+  test('uploads a hosted-size release package directly to object storage', async ({
+    page,
+  }) => {
+    await page.goto('/releases/intake')
+    await page.getByLabel(/5-Digit Job Number/i).fill('54126')
+
+    const zip = new JSZip()
+    zip.file('54126-1_Fictional_Large_Drawing.dwg', randomBytes(4_300_000))
+    const archive = await zip.generateAsync({
+      type: 'nodebuffer',
+      compression: 'STORE',
+    })
+    expect(archive.byteLength).toBeGreaterThan(4 * 1024 * 1024)
+
+    await page.getByLabel('Release package file').setInputFiles({
+      name: '54126_Fictional_Large_Release.zip',
+      mimeType: 'application/zip',
+      buffer: archive,
+    })
+
+    await expect(
+      page.getByRole('heading', {
+        name: 'Release Metadata & Panel Marks Master',
+      }),
+    ).toBeVisible()
+    await expect(
+      page.getByText('Source: 54126_Fictional_Large_Release.zip', {
+        exact: false,
+      }),
+    ).toBeVisible()
   })
 })

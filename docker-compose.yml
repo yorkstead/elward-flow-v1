@@ -25,6 +25,7 @@ services:
     environment:
       MINIO_ROOT_USER: elward-local
       MINIO_ROOT_PASSWORD: elward-local-password
+      MINIO_API_CORS_ALLOW_ORIGIN: http://localhost:3000,http://127.0.0.1:3000
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
@@ -43,7 +44,7 @@ services:
       done;
       echo 'MinIO is online! Creating local bucket...';
       mc mb --ignore-existing local_minio/elward-flow-local;
-      mc policy set public local_minio/elward-flow-local;
+      mc anonymous set none local_minio/elward-flow-local;
       echo 'Bucket initialized successfully!';
       exit 0;
       "

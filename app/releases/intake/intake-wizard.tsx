@@ -35,6 +35,35 @@ import type {
   ParsedPanelMarkInput,
 } from '@/lib/services/intake'
 import type { ImpactDispositionInput } from '@/lib/services/revision'
+import {
+  DIRECT_UPLOAD_THRESHOLD_BYTES,
+  MAX_INTAKE_BYTES,
+} from '@/lib/intake-upload'
+
+async function readJsonResponse(response: Response) {
+  const responseText = await response.text()
+  let data: Record<string, unknown> = {}
+  try {
+    data = responseText ? JSON.parse(responseText) : {}
+  } catch {
+    // Hosting-layer errors are not guaranteed to return JSON.
+  }
+  if (!response.ok) {
+    const fallback =
+      response.status === 413
+        ? 'The upload is too large for this transfer path.'
+        : `Upload failed with status ${response.status}.`
+    throw new Error(typeof data.error === 'string' ? data.error : fallback)
+  }
+  return data
+}
+
+async function sha256File(file: File) {
+  const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer())
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, '0'),
+  ).join('')
+}
 
 interface IntakeWizardProps {
   userRoles?: string[]
@@ -50,6 +79,7 @@ export function IntakeWizard({
   void isAdmin
   const [step, setStep] = React.useState<1 | 2 | 3 | 4 | 5>(1)
   const [uploading, setUploading] = React.useState(false)
+  const [uploadStatus, setUploadStatus] = React.useState<string | null>(null)
   const [publishing, setPublishing] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
@@ -94,24 +124,80 @@ export function IntakeWizard({
 
     setUploading(true)
     setError(null)
+    setUploadStatus('Preparing package…')
 
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('jobNumber', manualJobNumber)
-      formData.append('releaseNumber', manualReleaseNumber.toString())
-      formData.append('materialFamily', materialFamily)
+      if (file.size < 1 || file.size > MAX_INTAKE_BYTES)
+        throw new Error('Release package must be between 1 byte and 100 MB.')
 
-      const res = await fetch('/api/releases/intake', {
-        method: 'POST',
-        body: formData,
-      })
+      let intakeResponse: Response
+      if (file.size > DIRECT_UPLOAD_THRESHOLD_BYTES) {
+        setUploadStatus('Verifying package integrity…')
+        const digest = await sha256File(file)
+        const contentType = file.type || 'application/octet-stream'
+        const authorizationResponse = await fetch(
+          '/api/releases/intake/upload-url',
+          {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              filename: file.name,
+              contentType,
+              byteSize: file.size,
+              sha256: digest,
+            }),
+          },
+        )
+        const authorization = await readJsonResponse(authorizationResponse)
+        if (
+          typeof authorization.uploadUrl !== 'string' ||
+          typeof authorization.stagingKey !== 'string' ||
+          !authorization.uploadHeaders ||
+          typeof authorization.uploadHeaders !== 'object'
+        )
+          throw new Error('Secure storage authorization was incomplete.')
 
-      const json = await res.json()
-      if (!res.ok)
-        throw new Error(json.error || 'Failed to process upload package')
+        setUploadStatus('Uploading securely to object storage…')
+        const storageResponse = await fetch(authorization.uploadUrl, {
+          method: 'PUT',
+          headers: authorization.uploadHeaders as Record<string, string>,
+          body: file,
+        })
+        if (!storageResponse.ok)
+          throw new Error(
+            `Secure storage upload failed with status ${storageResponse.status}.`,
+          )
 
-      const result: IntakePackageResult = json.intake
+        setUploadStatus('Processing release package…')
+        intakeResponse = await fetch('/api/releases/intake', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            stagingKey: authorization.stagingKey,
+            filename: file.name,
+            contentType,
+            byteSize: file.size,
+            sha256: digest,
+            jobNumber: manualJobNumber,
+            releaseNumber: manualReleaseNumber,
+            materialFamily,
+          }),
+        })
+      } else {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('jobNumber', manualJobNumber)
+        formData.append('releaseNumber', manualReleaseNumber.toString())
+        formData.append('materialFamily', materialFamily)
+        setUploadStatus('Processing release package…')
+        intakeResponse = await fetch('/api/releases/intake', {
+          method: 'POST',
+          body: formData,
+        })
+      }
+
+      const json = await readJsonResponse(intakeResponse)
+      const result = json.intake as IntakePackageResult
       setIntakeData(result)
       setFiles(result.files)
       setMarks(result.marks)
@@ -125,6 +211,7 @@ export function IntakeWizard({
       setError(err instanceof Error ? err.message : 'Upload failed')
     } finally {
       setUploading(false)
+      setUploadStatus(null)
     }
   }
 
@@ -335,7 +422,7 @@ export function IntakeWizard({
               Select a release ZIP or PDF package
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              ZIP packages may include PDFs and a CSV panel takeoff; maximum 10
+              ZIP packages may include PDFs and a CSV panel takeoff; maximum 100
               MB
             </p>
 
@@ -355,10 +442,18 @@ export function IntakeWizard({
                   className="pointer-events-none bg-blue-600 hover:bg-blue-700"
                 >
                   <Upload className="mr-2 h-4 w-4" />
-                  {uploading ? 'Processing Archive…' : 'Browse Local Files'}
+                  {uploading ? 'Upload in Progress…' : 'Browse Local Files'}
                 </Button>
               </label>
             </div>
+            {uploadStatus && (
+              <p
+                className="mt-3 text-xs font-semibold text-blue-700"
+                role="status"
+              >
+                {uploadStatus}
+              </p>
+            )}
           </div>
         </div>
       )}

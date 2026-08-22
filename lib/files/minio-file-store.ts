@@ -1,14 +1,20 @@
 import {
   CreateBucketCommand,
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadBucketCommand,
   HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { getEnvironment } from '@/lib/env'
 import { sha256 } from './hash'
-import type { FileStore, PutImmutableObjectInput } from './file-store'
+import type {
+  CreateDirectUploadInput,
+  FileStore,
+  PutImmutableObjectInput,
+} from './file-store'
 
 export class MinioFileStore implements FileStore {
   private readonly environment = getEnvironment()
@@ -95,6 +101,28 @@ export class MinioFileStore implements FileStore {
     }
   }
 
+  async createDirectUpload(input: CreateDirectUploadInput) {
+    if (!input.key.startsWith('staging/'))
+      throw new Error('Direct uploads must use the staging namespace')
+
+    const command = new PutObjectCommand({
+      Bucket: this.environment.MINIO_BUCKET,
+      Key: input.key,
+      ContentType: input.contentType,
+      ContentLength: input.byteSize,
+      Metadata: { sha256: input.sha256 },
+    })
+    const url = await getSignedUrl(this.client, command, {
+      expiresIn: input.expiresInSeconds,
+    })
+    return {
+      url,
+      headers: {
+        'content-type': input.contentType,
+      },
+    }
+  }
+
   async get(key: string) {
     const result = await this.client.send(
       new GetObjectCommand({ Bucket: this.environment.MINIO_BUCKET, Key: key }),
@@ -109,6 +137,17 @@ export class MinioFileStore implements FileStore {
       contentType: result.ContentType ?? 'application/octet-stream',
       sha256: digest,
     }
+  }
+
+  async delete(key: string) {
+    if (!key.startsWith('staging/'))
+      throw new Error('Only staged uploads may be deleted')
+    await this.client.send(
+      new DeleteObjectCommand({
+        Bucket: this.environment.MINIO_BUCKET,
+        Key: key,
+      }),
+    )
   }
 }
 

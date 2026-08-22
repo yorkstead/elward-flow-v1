@@ -30,9 +30,10 @@ belong in an ADR under `docs/adr/`.
 
 ## 2026-08-22 — Authenticated release-package intake boundary
 
-- Browser intake accepts authenticated ZIP or PDF packages up to 10 MB and preserves both the original package and extracted files through the repository-owned FileStore.
+- Browser intake accepts authenticated ZIP or PDF packages up to 100 MB and preserves both the original package and extracted files through the repository-owned FileStore.
+- Packages above 4 MB bypass the hosted function body by using a five-minute, user- and organization-scoped presigned upload to the private FileStore staging namespace. Finalization rechecks ownership, byte size, SHA-256, file type, permission, and operational intake fields before immutable processing, then deletes the staged object.
 - ZIP packages are the production-ready path for publishing when they contain a CSV panel takeoff; the system no longer fabricates panel marks when no takeoff data is present.
-- Larger release packages require a future resumable direct-to-object-storage design and are not represented as supported by the current UI.
+- Packages above 100 MB still require a future resumable multipart design and are not represented as supported by the current UI.
 
 ## 2026-08-22 — Stabilization and automated acceptance boundary
 

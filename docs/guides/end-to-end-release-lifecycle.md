@@ -20,7 +20,7 @@ Ingest engineering takeoff files, architectural drawings, and panel marks into a
    - Choose the 5-digit job (e.g. `54120 - Tempe Gateway Commercial Center`).
    - Specify the release sequence (e.g. `Release 1` creates unique business key `54120-1`).
 3. **Upload Engineering Files**:
-   - Upload a ZIP package up to 10 MB containing the controlled PDFs and a CSV panel takeoff.
+   - Upload a ZIP package up to 100 MB containing the controlled PDFs and a CSV panel takeoff. Packages above 4 MB upload directly to private object storage with a five-minute authorization; the application then verifies size and SHA-256 before processing.
    - The CSV columns are `mark`, `description`, `quantity`, `materialFamily`, `color`, `thickness`, `width`, and `length`.
    - A standalone PDF is preserved and classified, but publishing remains blocked until panel marks are supplied through a CSV takeoff package.
 4. **Classification & Verification**:

@@ -50,3 +50,14 @@ These values are sensitive production variables in Vercel and must not be
 committed or copied into the local development environment. Local development
 continues to use MinIO. Preview object storage remains intentionally separate
 from production and must not point at the production bucket.
+
+Browser uploads above the Vercel request-body ceiling use short-lived presigned
+`PUT` requests to the private bucket. Configure bucket CORS after storage setup:
+
+```powershell
+bun run storage:cors
+```
+
+Production permits only the exact `APP_URL` origin, the `PUT` method, and the
+`content-type` request header. The signed URL carries the SHA-256 metadata;
+public bucket access is not required and must remain disabled.

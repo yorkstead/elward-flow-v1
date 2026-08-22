@@ -106,6 +106,20 @@ describe('DocumentClassifier & Safe ZIP Extraction', () => {
       ).toBe(true)
     })
 
+    it('does not treat traversal-like bytes in file contents as a path', async () => {
+      const zip = new JSZip()
+      zip.file(
+        '54120-1_Drawing.dwg',
+        Buffer.from('legitimate drawing bytes ../ embedded in content'),
+      )
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' })
+
+      const extracted = await DocumentClassifier.safeExtractZip(buffer)
+
+      expect(extracted).toHaveLength(1)
+      expect(extracted[0]?.filename).toBe('54120-1_Drawing.dwg')
+    })
+
     it('blocks directory traversal attacks in ZIP archives', async () => {
       const zip = new JSZip()
       zip.file('../../../etc/passwd', Buffer.from('malicious'))

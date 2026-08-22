@@ -331,14 +331,6 @@ export class DocumentClassifier {
     const maxFileBytes = options.maxFileBytes ?? 100 * 1024 * 1024 // 100 MB
     const maxFileCount = options.maxFileCount ?? 1000
 
-    // Raw binary check for path traversal in entry headers
-    const rawBinary = zipBuffer.toString('binary')
-    if (rawBinary.includes('../') || rawBinary.includes('..\\')) {
-      throw new Error(
-        'Security violation: ZIP contains illegal path traversal.',
-      )
-    }
-
     const zip = await JSZip.loadAsync(zipBuffer)
     const files: ExtractedArchiveFile[] = []
     let totalUncompressedBytes = 0
@@ -355,7 +347,8 @@ export class DocumentClassifier {
       if (entry.dir) continue
 
       // 1. Path Traversal Prevention
-      const normalizedPath = relativePath.replace(/\\/g, '/')
+      const sourcePath = entry.unsafeOriginalName ?? relativePath
+      const normalizedPath = sourcePath.replace(/\\/g, '/')
       if (
         normalizedPath.includes('../') ||
         normalizedPath.startsWith('/') ||
