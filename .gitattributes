@@ -1,0 +1,11 @@
+# Keep repository text deterministic across Windows and Linux. Prettier's
+# default end-of-line policy is LF, so checkout must not rewrite text to CRLF.
+* text=auto eol=lf
+
+# Preserve binary assets byte-for-byte.
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.webp binary
+*.zip binary
