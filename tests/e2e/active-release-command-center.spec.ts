@@ -12,6 +12,7 @@ test.describe('Active Release Command Center & Application Shell', () => {
     await page.getByLabel('Password').fill(password)
     await page.getByRole('button', { name: 'Sign in' }).click()
     await expect(page).toHaveURL(/\/dashboard/)
+    await page.goto('/dashboard?job=54120&release=1')
   })
 
   test('renders the pinned active release command center on desktop (1280px)', async ({
@@ -50,14 +51,16 @@ test.describe('Active Release Command Center & Application Shell', () => {
     await expect(page.getByText('CNC Routing').first()).toBeVisible()
     await expect(page.getByText('ELU Extrusion Cut').first()).toBeVisible()
 
-    // 4. Verify Blockers & Exceptions
+    // 4. Verify the dashboard does not invent operational blockers
     await expect(
-      page.getByRole('heading', { name: 'Blockers & Owned Exceptions' }),
+      page.getByText('No Active Blockers or Holds', { exact: true }),
     ).toBeVisible()
     await expect(
       page.getByText('Extrusion Profile EX-402 Shortage'),
-    ).toBeVisible()
-    await expect(page.getByText('QC Hold on Mark P-102 (1 unit)')).toBeVisible()
+    ).toHaveCount(0)
+    await expect(page.getByText('QC Hold on Mark P-102 (1 unit)')).toHaveCount(
+      0,
+    )
 
     // 5. Verify Panel Marks Table & Filtering
     await expect(

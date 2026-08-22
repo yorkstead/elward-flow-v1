@@ -63,3 +63,10 @@ belong in an ADR under `docs/adr/`.
 - Production credentials are limited to object read/write on that bucket; they do not grant bucket administration or access to future buckets.
 - Retained MinIO for local development. Preview deployments must use separate storage and cannot share the production bucket.
 - Verified upload, SHA-256 metadata, head, download integrity, and cleanup through the same path-style S3 client configuration used by the application.
+
+## 2026-08-22 — Production dashboard selection and first-run state
+
+- Removed the seeded `54120-1` release as the implicit dashboard default. Without an explicit job and release in the URL, the dashboard now selects the organization's most recently updated real release.
+- An organization with no releases receives a guided first-run state linking to controlled release intake and the releases register; it does not display a fictional job error.
+- Explicit links to missing jobs or releases continue to show a scoped not-found state rather than silently selecting different production work.
+- Removed fictional blocker, activity, and panel-count fallbacks from the active-release command center. Empty operational sections now report only the absence of recorded data and never infer readiness from missing records.

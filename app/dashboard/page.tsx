@@ -1,4 +1,5 @@
 import { auth } from '@/auth'
+import Link from 'next/link'
 import { db } from '@/db'
 import {
   productionJobs,
@@ -38,6 +39,8 @@ import {
   ActivityStream,
   type ActivityItem,
 } from '@/components/domain/release/activity-stream'
+import { FirstRunDashboard } from '@/components/domain/dashboard/first-run-dashboard'
+import { Button } from '@/components/ui/button'
 
 interface PageProps {
   searchParams: Promise<{
@@ -55,8 +58,30 @@ export default async function DashboardPage(props: PageProps) {
     return <div className="p-8 text-center text-slate-500">Unauthorized</div>
   }
 
-  const targetJobNumber = searchParams.job || '54120'
-  const targetReleaseNumber = parseInt(searchParams.release || '1', 10)
+  const [mostRecentRelease] = searchParams.job
+    ? []
+    : await db
+        .select({
+          jobNumber: productionJobs.jobNumber,
+          releaseNumber: releases.releaseNumber,
+        })
+        .from(releases)
+        .innerJoin(productionJobs, eq(releases.jobId, productionJobs.id))
+        .where(eq(releases.organizationId, organizationId))
+        .orderBy(desc(releases.updatedAt))
+        .limit(1)
+
+  if (!searchParams.job && !mostRecentRelease) {
+    return <FirstRunDashboard />
+  }
+
+  const targetJobNumber = searchParams.job || mostRecentRelease.jobNumber
+  const parsedReleaseNumber = searchParams.release
+    ? Number.parseInt(searchParams.release, 10)
+    : mostRecentRelease.releaseNumber
+  const targetReleaseNumber = Number.isInteger(parsedReleaseNumber)
+    ? parsedReleaseNumber
+    : 1
 
   // 1. Fetch Production Job & Associated Customer / Project
   const [jobRecord] = await db
@@ -111,6 +136,20 @@ export default async function DashboardPage(props: PageProps) {
       ),
     )
     .limit(1)
+
+  if (!releaseRecord) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-4 p-8 text-center">
+        <h1 className="text-2xl font-bold text-slate-900">
+          Release {targetJobNumber}-{targetReleaseNumber} Not Found
+        </h1>
+        <p className="text-sm text-slate-600">
+          The requested release does not exist in this organization.
+        </p>
+        <Button render={<Link href="/dashboard" />}>Open active release</Button>
+      </div>
+    )
+  }
 
   const [revisionRecord] = releaseRecord
     ? await db
@@ -258,27 +297,8 @@ export default async function DashboardPage(props: PageProps) {
     updatedAt: d.updatedAt.toISOString(),
   }))
 
-  // 6. Hardcoded + Derived Blockers & Exceptions
-  const blockers: BlockerItem[] = [
-    {
-      id: 'blocker-1',
-      type: 'material_shortage',
-      title: 'Extrusion Profile EX-402 Shortage',
-      description:
-        '120 ft required for perimeter perimeter trim. PO #9021 from AlumEx scheduled for delivery Aug 22.',
-      owner: 'Purchasing Lead',
-      severity: 'warning',
-    },
-    {
-      id: 'blocker-2',
-      type: 'qc_hold',
-      title: 'QC Hold on Mark P-102 (1 unit)',
-      description:
-        'Minor anodized finish scratch detected during first-off routing inspection. Disposition: Rework pending.',
-      owner: 'QC Inspector',
-      severity: 'warning',
-    },
-  ]
+  // Blockers must come from operational records; never show demo exceptions.
+  const blockers: BlockerItem[] = []
 
   // 7. Recent Consequential Activities Feed
   const recentActivitiesRaw = await db
@@ -295,38 +315,18 @@ export default async function DashboardPage(props: PageProps) {
     .orderBy(desc(activityEvents.createdAt))
     .limit(5)
 
-  const activities: ActivityItem[] =
-    recentActivitiesRaw.length > 0
-      ? recentActivitiesRaw.map((a) => ({
-          id: a.id,
-          actionTitle: a.actionTitle,
-          summary: a.summary,
-          actorName: a.actorName || 'System',
-          actorRole: 'Operations',
-          timestamp: new Date(a.createdAt).toLocaleTimeString('en-US', {
-            timeZone: 'America/Denver',
-            hour: '2-digit',
-            minute: '2-digit',
-          }),
-        }))
-      : [
-          {
-            id: 'act-1',
-            actionTitle: 'Release Intake Approved',
-            summary: 'Approved Rev 1 (A) for shop floor production routing.',
-            actorName: session.user.name || 'Administrator',
-            actorRole: session.user.roles[0] || 'Administrator',
-            timestamp: '09:15 AM MT',
-          },
-          {
-            id: 'act-2',
-            actionTitle: 'CNC Routing Begun',
-            summary: 'Operator checked in Mark P-101 on CNC Machine #2.',
-            actorName: 'CNC Lead',
-            actorRole: 'CNC Lead',
-            timestamp: '10:42 AM MT',
-          },
-        ]
+  const activities: ActivityItem[] = recentActivitiesRaw.map((a) => ({
+    id: a.id,
+    actionTitle: a.actionTitle,
+    summary: a.summary,
+    actorName: a.actorName || 'System',
+    actorRole: 'Operations',
+    timestamp: new Date(a.createdAt).toLocaleTimeString('en-US', {
+      timeZone: 'America/Denver',
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+  }))
 
   const totalPanels = marks.reduce((sum, m) => sum + m.quantity, 0)
 
@@ -367,7 +367,7 @@ export default async function DashboardPage(props: PageProps) {
           {/* Department Execution Pipeline */}
           <DepartmentProgressTracker
             steps={departmentProgress}
-            totalPanels={totalPanels > 0 ? totalPanels : 54}
+            totalPanels={totalPanels}
           />
 
           {/* Panel Marks Table */}

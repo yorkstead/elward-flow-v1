@@ -25,7 +25,7 @@ export function BlockersExceptionsCard({
         <div>
           <p className="text-sm font-bold">No Active Blockers or Holds</p>
           <p className="text-xs text-slate-600">
-            Material readiness is satisfied and all marks are clear to proceed.
+            No open blocker or hold records are attached to this release.
           </p>
         </div>
       </div>
