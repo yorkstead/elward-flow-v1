@@ -106,3 +106,8 @@ belong in an ADR under `docs/adr/`.
 - Generated error logs, operating-system metadata, backup files, material release letters, order cover/reminder sheets, and waste-factor sheets are retained as non-routing support artifacts without requiring manual review. Rail documents classify as optional accessory schedules.
 - An uncertain file has an explicit **Confirm** action. Reviewers can accept the currently displayed category without first changing it to an incorrect category and back again.
 - Unclassified PDF and DWG drawings default to a reviewable cut-drawing suggestion. The suggestion can satisfy the visible document category, but the reviewer must explicitly confirm it before continuing.
+
+## 2026-08-22 — Navigation action semantics
+
+- Navigation and download actions render as links styled as buttons rather than buttons nested inside anchors.
+- This preserves native link behavior and keyboard accessibility while avoiding redundant component event handling on release-table actions.

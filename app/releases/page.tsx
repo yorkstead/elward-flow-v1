@@ -1,7 +1,7 @@
 import { auth, signOut } from '@/auth'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/domain/app-shell'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { db } from '@/db'
@@ -80,10 +80,14 @@ export default async function ReleasesPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/releases/intake">
-              <Button className="bg-blue-600 text-xs font-semibold text-white shadow-2xs hover:bg-blue-700">
-                <Upload className="mr-2 h-4 w-4" /> New Release Intake
-              </Button>
+            <Link
+              href="/releases/intake"
+              className={buttonVariants({
+                className:
+                  'bg-blue-600 text-xs font-semibold text-white shadow-2xs hover:bg-blue-700',
+              })}
+            >
+              <Upload className="mr-2 h-4 w-4" /> New Release Intake
             </Link>
           </div>
         </div>
@@ -199,26 +203,25 @@ export default async function ReleasesPage() {
                           href={`/api/releases/${row.releaseId}/packets/complete?format=pdf`}
                           target="_blank"
                           rel="noreferrer"
+                          title="Download Merged Controlled PDF Packet"
+                          className={buttonVariants({
+                            variant: 'outline',
+                            size: 'sm',
+                            className: 'h-8 px-2 text-xs',
+                          })}
                         >
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            title="Download Merged Controlled PDF Packet"
-                            className="h-8 px-2 text-xs"
-                          >
-                            <FileDown className="mr-1 h-3.5 w-3.5" /> PDF Packet
-                          </Button>
+                          <FileDown className="mr-1 h-3.5 w-3.5" /> PDF Packet
                         </a>
                         <Link
                           href={`/dashboard?job=${row.jobNumber}&release=${row.releaseNumber}`}
+                          className={buttonVariants({
+                            size: 'sm',
+                            className:
+                              'h-8 bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700',
+                          })}
                         >
-                          <Button
-                            size="sm"
-                            className="h-8 bg-blue-600 text-xs font-semibold text-white hover:bg-blue-700"
-                          >
-                            Command Center{' '}
-                            <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                          </Button>
+                          Command Center{' '}
+                          <ArrowRight className="ml-1 h-3.5 w-3.5" />
                         </Link>
                       </div>
                     </td>
