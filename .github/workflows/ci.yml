@@ -10,6 +10,19 @@ jobs:
   validate:
     name: Lint, Typecheck, Unit Tests & Build
     runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      APP_URL: http://localhost:3000
+      AUTH_SECRET: ci_only_auth_secret_at_least_32_characters_long
+      DATABASE_URL: postgresql://elward:elward_local_only@localhost:5432/elward_flow
+      MINIO_ENDPOINT: http://localhost:9000
+      MINIO_REGION: us-east-1
+      MINIO_ACCESS_KEY: ci-only-access-key
+      MINIO_SECRET_KEY: ci-only-secret-key
+      MINIO_BUCKET: elward-flow-ci
+      ADMIN_EMAIL: admin@example.test
+      WORKER_POLL_INTERVAL_MS: 1000
+      LOG_LEVEL: info
 
     services:
       postgres:
@@ -48,23 +61,13 @@ jobs:
         run: bun run typecheck
 
       - name: Apply Database Migrations
-        env:
-          DATABASE_URL: postgresql://elward:elward_local_only@localhost:5432/elward_flow
         run: bun run db:migrate
 
       - name: Run Seed Data Verification
-        env:
-          DATABASE_URL: postgresql://elward:elward_local_only@localhost:5432/elward_flow
         run: bun run seed
 
       - name: Run Unit Tests
-        env:
-          DATABASE_URL: postgresql://elward:elward_local_only@localhost:5432/elward_flow
-          AUTH_SECRET: local_development_secret_only_32_chars_long!!
         run: bun run test:unit
 
       - name: Build Application
-        env:
-          DATABASE_URL: postgresql://elward:elward_local_only@localhost:5432/elward_flow
-          AUTH_SECRET: local_development_secret_only_32_chars_long!!
         run: bun run build
