@@ -30,3 +30,23 @@ Do not use `drizzle-kit push` against production. Migrations in `db/migrations`
 are the schema source of truth. Create production administrators separately and
 do not run the fictional development seed against production without an explicit
 acceptance-data decision.
+
+## Hosted object storage
+
+Production uses the private Cloudflare R2 bucket `elward-flow-production`
+through the repository-owned S3-compatible FileStore. The credential is an
+account token restricted to object read/write access on that bucket only. It
+cannot administer other buckets, and the bucket has no public access.
+
+The existing `MINIO_*` variable names are retained for compatibility with the
+provider-neutral adapter:
+
+- `MINIO_ENDPOINT` — the account R2 S3 endpoint
+- `MINIO_REGION` — `auto` for R2
+- `MINIO_ACCESS_KEY` and `MINIO_SECRET_KEY` — sensitive bucket-scoped S3 credentials
+- `MINIO_BUCKET` — `elward-flow-production`
+
+These values are sensitive production variables in Vercel and must not be
+committed or copied into the local development environment. Local development
+continues to use MinIO. Preview object storage remains intentionally separate
+from production and must not point at the production bucket.

@@ -55,3 +55,11 @@ belong in an ADR under `docs/adr/`.
 - Production uses the Neon `main` branch. Vercel previews use a separate Neon `preview` branch so preview activity cannot alter production records.
 - Kept the existing `pg` and Drizzle implementation. Vercel receives Neon's pooled, TLS-required connection URLs as sensitive environment variables; no provider-specific business logic was introduced.
 - Repository-owned Drizzle migrations remain the schema source of truth. Production data and administrator provisioning are intentionally separate from fictional development seed data.
+
+## 2026-08-22 — Hosted object storage
+
+- Selected Cloudflare R2 for production because its S3-compatible API preserves the repository-owned FileStore and existing AWS SDK adapter without provider-specific business logic.
+- Created the private `elward-flow-production` bucket with Standard storage and automatic placement. Public access remains disabled.
+- Production credentials are limited to object read/write on that bucket; they do not grant bucket administration or access to future buckets.
+- Retained MinIO for local development. Preview deployments must use separate storage and cannot share the production bucket.
+- Verified upload, SHA-256 metadata, head, download integrity, and cleanup through the same path-style S3 client configuration used by the application.
