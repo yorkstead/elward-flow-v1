@@ -13,7 +13,7 @@ export default defineConfig({
   webServer: process.env.CI
     ? {
         command: 'bun run start',
-        url: 'http://localhost:3000/api/health',
+        url: 'http://localhost:3000/api/health/live',
         reuseExistingServer: true,
         timeout: 120_000,
       }
