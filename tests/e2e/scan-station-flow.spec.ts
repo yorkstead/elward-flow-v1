@@ -27,22 +27,22 @@ test.describe('Shop Floor Scan Station & Movement Ledger (Prompt 05)', () => {
     ).toBeVisible()
     await expect(page.getByText('ONLINE')).toBeVisible()
 
-    // 2. Scan Current Mark P-101
+    // 2. Scan Current Mark P-103, which is actively in ELU production.
     const codeInput = page.getByPlaceholder(/Scan barcode, enter mark/i)
-    await codeInput.fill('P-101')
+    await codeInput.fill('P-103')
     await page.getByRole('button', { name: /Resolve Code/i }).click()
 
     // 3. Verify Scanned Record Card & Permitted Actions
-    await expect(page.getByText('Mark P-101', { exact: true })).toBeVisible()
+    await expect(page.getByText('Mark P-103', { exact: true })).toBeVisible()
     await expect(page.getByText(/Current Rev/i)).toBeVisible()
     await expect(
-      page.getByRole('button', { name: /Complete CNC/i }),
+      page.getByRole('button', { name: /Complete ELU Cut/i }),
     ).toBeVisible()
 
-    // 4. Execute 2-3 Tap Action: Complete CNC Quantity
-    await page.getByRole('button', { name: /Complete CNC/i }).click()
+    // 4. Execute 2-3 Tap Action: Complete ELU Quantity
+    await page.getByRole('button', { name: /Complete ELU Cut/i }).click()
     await expect(
-      page.getByText(/Step 2: Confirm Movement — Complete CNC/i),
+      page.getByText(/Step 2: Confirm Movement — Complete ELU Cut/i),
     ).toBeVisible()
 
     // Click Confirm Movement
@@ -52,11 +52,11 @@ test.describe('Shop Floor Scan Station & Movement Ledger (Prompt 05)', () => {
 
     // 5. Verify High-Visibility Success Feedback & Movement Ledger Row
     await expect(
-      page.getByText(/SUCCESS: Recorded 1 pcs of P-101/i),
+      page.getByText(/SUCCESS: Recorded 1 pcs of P-103/i),
     ).toBeVisible()
     await expect(page.getByText('Shop Floor Movement Ledger')).toBeVisible()
     await expect(
-      page.getByRole('cell', { name: 'P-101' }).first(),
+      page.getByRole('cell', { name: 'P-103' }).first(),
     ).toBeVisible()
 
     // 6. Test Mandatory Reason for Exception (Hold) on Mark P-102
@@ -82,14 +82,15 @@ test.describe('Shop Floor Scan Station & Movement Ledger (Prompt 05)', () => {
     ).toBeVisible()
 
     // 7. Test Blocking Obsolete Revision Warning Modal
-    await codeInput.fill('EF:MARK:54120-1:P-101:REV-OLD')
+    await codeInput.fill('P-OLD')
     await page.getByRole('button', { name: /Resolve Code/i }).click()
 
-    // Dismiss or check blocking modal
-    const dismissBtn = page.getByRole('button', { name: /Dismiss/i })
-    if (await dismissBtn.isVisible()) {
-      await dismissBtn.click()
-    }
+    await expect(
+      page.getByRole('heading', { name: 'SUPERSEDED REVISION DETECTED' }),
+    ).toBeVisible()
+    await expect(page.getByText(/Rev PRELIM.*SUPERSEDED/i)).toBeVisible()
+    await expect(page.getByText(/Rev A.*APPROVED/i)).toBeVisible()
+    await page.getByRole('button', { name: /Dismiss/i }).click()
 
     // 8. Accessibility Audit on Scan Station
     const accessibilityScanResults = await new AxeBuilder({ page }).analyze()

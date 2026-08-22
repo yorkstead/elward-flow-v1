@@ -469,6 +469,37 @@ async function main() {
         .returning()
 
       if (revision) {
+        const [supersededRevision] = await db
+          .insert(releaseRevisions)
+          .values({
+            organizationId: organization.id,
+            releaseId: release.id,
+            revisionNumber: 0,
+            revisionLabel: 'PRELIM',
+            status: 'Superseded',
+            isCurrent: false,
+            notes:
+              'Fictional obsolete revision retained for scanner safety verification.',
+          })
+          .onConflictDoNothing()
+          .returning()
+
+        if (supersededRevision) {
+          await db.insert(panelMarks).values({
+            organizationId: organization.id,
+            releaseRevisionId: supersededRevision.id,
+            mark: 'P-OLD',
+            description: 'Obsolete test mark — production use blocked',
+            quantity: 1,
+            materialFamily: 'ACM',
+            color: 'Fictional Test Grey',
+            thickness: '0.1575',
+            width: '12.0000',
+            length: '12.0000',
+            dimensionUnit: 'in',
+          })
+        }
+
         const createdMarks = await db
           .insert(panelMarks)
           .values([

@@ -98,6 +98,12 @@ jobs:
           docker logs elward-flow-ci-minio
           exit 1
 
+      - name: Initialize Object Storage Bucket
+        run: >-
+          bun -e "import { getFileStore } from './lib/files/minio-file-store';
+          await getFileStore().ensureReady();
+          console.log('Object storage bucket ready')"
+
       - name: Install Chromium
         run: bun x playwright install --with-deps chromium
 
