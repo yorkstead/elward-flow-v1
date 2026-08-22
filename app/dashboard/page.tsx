@@ -261,35 +261,39 @@ export default async function DashboardPage(props: PageProps) {
   })
 
   // 5. Fetch Controlled Documents
-  const docRecords = releaseRecord
-    ? await db
-        .select({
-          id: documents.id,
-          name: documents.name,
-          classification: documentClassifications.name,
-          revisionLabel: documentRevisions.revisionLabel,
-          status: documentRevisions.status,
-          updatedAt: documents.updatedAt,
-        })
-        .from(documents)
-        .innerJoin(
-          documentClassifications,
-          eq(documents.classificationId, documentClassifications.id),
-        )
-        .leftJoin(
-          documentRevisions,
-          eq(documents.id, documentRevisions.documentId),
-        )
-        .where(
-          and(
-            eq(documents.organizationId, organizationId),
-            eq(documents.releaseId, releaseRecord.id),
-          ),
-        )
-    : []
+  const docRecords =
+    releaseRecord && revisionRecord
+      ? await db
+          .select({
+            id: documents.id,
+            storedFileId: documentRevisions.storedFileId,
+            name: documents.name,
+            classification: documentClassifications.name,
+            revisionLabel: documentRevisions.revisionLabel,
+            status: documentRevisions.status,
+            updatedAt: documents.updatedAt,
+          })
+          .from(documents)
+          .innerJoin(
+            documentClassifications,
+            eq(documents.classificationId, documentClassifications.id),
+          )
+          .innerJoin(
+            documentRevisions,
+            eq(documents.id, documentRevisions.documentId),
+          )
+          .where(
+            and(
+              eq(documents.organizationId, organizationId),
+              eq(documents.releaseId, releaseRecord.id),
+              eq(documentRevisions.releaseRevisionId, revisionRecord.id),
+            ),
+          )
+      : []
 
   const formattedDocs: ReleaseDocumentItem[] = docRecords.map((d) => ({
     id: d.id,
+    storedFileId: d.storedFileId,
     name: d.name,
     classification: d.classification,
     revisionLabel: d.revisionLabel || 'A',
@@ -387,6 +391,7 @@ export default async function DashboardPage(props: PageProps) {
           {/* Controlled Documents & Packets */}
           <ControlledDocumentsList
             documents={formattedDocs}
+            releaseRevisionId={revisionRecord?.id ?? null}
             jobNumber={jobRecord.jobNumber}
             releaseNumber={
               releaseRecord ? releaseRecord.releaseNumber : targetReleaseNumber

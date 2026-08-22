@@ -163,7 +163,7 @@ export class PacketGeneratorService {
         storedFiles,
         eq(documentRevisions.storedFileId, storedFiles.id),
       )
-      .where(eq(documentRevisions.revisionLabel, rev.revisionLabel))
+      .where(eq(documentRevisions.releaseRevisionId, rev.revisionId))
 
     const filteredDocs = docItems.filter((d) =>
       packetDef.includedCategories.includes(d.categoryCode),
@@ -437,7 +437,7 @@ export class PacketGeneratorService {
         storedFiles,
         eq(documentRevisions.storedFileId, storedFiles.id),
       )
-      .where(eq(documentRevisions.revisionLabel, rev.revisionLabel))
+      .where(eq(documentRevisions.releaseRevisionId, rev.revisionId))
 
     const filteredDocs = docItems.filter((d) =>
       packetDef.includedCategories.includes(d.categoryCode),

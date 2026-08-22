@@ -1,12 +1,10 @@
-'use client'
-
-import * as React from 'react'
 import { FileText, Download, FileArchive, CheckCircle2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
 export interface ReleaseDocumentItem {
   id: string
+  storedFileId: string
   classification: string
   name: string
   revisionLabel: string
@@ -17,12 +15,14 @@ export interface ReleaseDocumentItem {
 
 interface ControlledDocumentsListProps {
   documents: ReleaseDocumentItem[]
+  releaseRevisionId: string | null
   jobNumber: string
   releaseNumber: number
 }
 
 export function ControlledDocumentsList({
   documents,
+  releaseRevisionId,
   jobNumber,
   releaseNumber,
 }: ControlledDocumentsListProps) {
@@ -43,32 +43,42 @@ export function ControlledDocumentsList({
         </div>
         <div className="flex items-center gap-2">
           <a
-            href={`/api/releases/${jobNumber}/packets/complete?format=pdf`}
+            href={
+              releaseRevisionId
+                ? `/api/releases/${releaseRevisionId}/packets/complete?format=pdf`
+                : undefined
+            }
             target="_blank"
             rel="noreferrer"
+            aria-disabled={!releaseRevisionId}
+            className={buttonVariants({
+              variant: 'outline',
+              size: 'sm',
+              className:
+                'flex h-8 items-center gap-1.5 border-slate-300 bg-white text-xs font-semibold text-slate-800 hover:bg-slate-50 aria-disabled:pointer-events-none aria-disabled:opacity-50',
+            })}
           >
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex h-8 items-center gap-1.5 border-slate-300 bg-white text-xs font-semibold text-slate-800 hover:bg-slate-50"
-            >
-              <FileText className="h-3.5 w-3.5 text-blue-600" />
-              Merged PDF
-            </Button>
+            <FileText className="h-3.5 w-3.5 text-blue-600" />
+            Merged drawing PDF
           </a>
           <a
-            href={`/api/releases/${jobNumber}/packets/complete?format=zip`}
+            href={
+              releaseRevisionId
+                ? `/api/releases/${releaseRevisionId}/packets/complete?format=zip`
+                : undefined
+            }
             target="_blank"
             rel="noreferrer"
+            aria-disabled={!releaseRevisionId}
+            className={buttonVariants({
+              variant: 'outline',
+              size: 'sm',
+              className:
+                'flex h-8 items-center gap-1.5 border-blue-300 bg-blue-50 text-xs font-semibold text-blue-900 hover:bg-blue-100 aria-disabled:pointer-events-none aria-disabled:opacity-50',
+            })}
           >
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex h-8 items-center gap-1.5 border-blue-300 bg-blue-50 text-xs font-semibold text-blue-900 hover:bg-blue-100"
-            >
-              <FileArchive className="h-3.5 w-3.5" />
-              Complete ZIP
-            </Button>
+            <FileArchive className="h-3.5 w-3.5" />
+            Complete packet ZIP
           </a>
         </div>
       </div>
@@ -105,15 +115,20 @@ export function ControlledDocumentsList({
               </div>
             </div>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-slate-400 hover:bg-blue-50 hover:text-blue-600"
-              title="Download Document"
-              onClick={() => alert(`Opening ${doc.name}`)}
+            <a
+              href={`/api/files/${doc.storedFileId}`}
+              className={buttonVariants({
+                variant: 'ghost',
+                size: 'sm',
+                className:
+                  'h-7 shrink-0 gap-1 px-2 text-[11px] text-slate-600 hover:bg-blue-50 hover:text-blue-700',
+              })}
+              title={`Download ${doc.name}`}
+              aria-label={`Download ${doc.name}`}
             >
               <Download className="h-3.5 w-3.5" />
-            </Button>
+              Download
+            </a>
           </div>
         ))}
       </div>

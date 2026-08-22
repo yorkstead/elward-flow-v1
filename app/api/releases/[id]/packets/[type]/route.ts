@@ -6,7 +6,7 @@ import {
 } from '@/lib/services/packet-generator'
 import { db } from '@/db'
 import { releaseRevisions } from '@/db/schema'
-import { eq, or } from 'drizzle-orm'
+import { and, eq, or } from 'drizzle-orm'
 import { logger } from '@/lib/logger'
 
 export async function GET(
@@ -20,31 +20,37 @@ export async function GET(
     }
 
     const { id, type } = await params
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        id,
+      )
+    ) {
+      return NextResponse.json(
+        { error: 'A valid release or revision identifier is required.' },
+        { status: 400 },
+      )
+    }
     const packetType = type as DepartmentPacketType
     const { searchParams } = new URL(request.url)
     const format = searchParams.get('format') || 'pdf'
 
-    // Look up revision (id can be revision ID or release ID)
-    let [rev] = await db
+    // Resolve either a revision ID or a release ID within the signed-in organization.
+    const [rev] = await db
       .select({ id: releaseRevisions.id })
       .from(releaseRevisions)
-      .where(eq(releaseRevisions.id, id))
-      .limit(1)
-
-    if (!rev) {
-      // Try resolving as release ID -> active revision
-      const [activeRev] = await db
-        .select({ id: releaseRevisions.id })
-        .from(releaseRevisions)
-        .where(
+      .where(
+        and(
+          eq(releaseRevisions.organizationId, session.user.organizationId),
           or(
-            eq(releaseRevisions.releaseId, id),
-            eq(releaseRevisions.isCurrent, true),
+            eq(releaseRevisions.id, id),
+            and(
+              eq(releaseRevisions.releaseId, id),
+              eq(releaseRevisions.isCurrent, true),
+            ),
           ),
-        )
-        .limit(1)
-      rev = activeRev
-    }
+        ),
+      )
+      .limit(1)
 
     if (!rev) {
       return NextResponse.json(
