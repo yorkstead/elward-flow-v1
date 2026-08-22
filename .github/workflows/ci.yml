@@ -8,7 +8,7 @@ on:
 
 jobs:
   validate:
-    name: Lint, Typecheck, Unit Tests & Build
+    name: Quality, Integration, Browser Tests & Build
     runs-on: ubuntu-latest
     env:
       NODE_ENV: test
@@ -21,6 +21,7 @@ jobs:
       MINIO_SECRET_KEY: ci-only-secret-key
       MINIO_BUCKET: elward-flow-ci
       ADMIN_EMAIL: admin@example.test
+      E2E_ADMIN_PASSWORD: CI-only-admin-password-2026!
       WORKER_POLL_INTERVAL_MS: 1000
       LOG_LEVEL: info
 
@@ -51,6 +52,9 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
+      - name: Audit Production Dependencies
+        run: bun audit --production
+
       - name: Verify Code Formatting
         run: bun run format:check
 
@@ -69,5 +73,33 @@ jobs:
       - name: Run Unit Tests
         run: bun run test:unit
 
+      - name: Run Database Integration Tests
+        run: bun run test:integration
+
       - name: Build Application
         run: bun run build
+
+      - name: Start Object Storage
+        run: >-
+          docker run --detach --name elward-flow-ci-minio
+          --publish 9000:9000
+          --env MINIO_ROOT_USER=ci-only-access-key
+          --env MINIO_ROOT_PASSWORD=ci-only-secret-key
+          minio/minio:latest server /data
+
+      - name: Wait for Object Storage
+        run: |
+          for attempt in {1..30}; do
+            if curl --fail --silent http://localhost:9000/minio/health/live > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs elward-flow-ci-minio
+          exit 1
+
+      - name: Install Chromium
+        run: bun x playwright install --with-deps chromium
+
+      - name: Run Browser Tests
+        run: bun run test:e2e

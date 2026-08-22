@@ -162,7 +162,10 @@ async function main() {
   }
 
   // 3. Local Administrator User
-  const password = `Local-${randomBytes(12).toString('base64url')}!`
+  const password =
+    environment.NODE_ENV === 'test' && environment.E2E_ADMIN_PASSWORD
+      ? environment.E2E_ADMIN_PASSWORD
+      : `Local-${randomBytes(12).toString('base64url')}!`
   const existingUsers = await db
     .select()
     .from(users)

@@ -22,7 +22,7 @@
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
     "test:e2e": "playwright test",
-    "test:all": "bun run format:check && bun run lint && bun run typecheck && bun run test && bun run test:e2e && bun run build",
+    "test:all": "bun run format:check && bun run lint && bun run typecheck && bun audit --production && bun run test:unit && bun run test:integration && bun run build && bun run test:e2e",
     "lint": "eslint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

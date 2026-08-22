@@ -13,6 +13,7 @@ const serverEnvironmentSchema = z.object({
   MINIO_SECRET_KEY: z.string().min(1),
   MINIO_BUCKET: z.string().min(3),
   ADMIN_EMAIL: z.email().default('admin@example.test'),
+  E2E_ADMIN_PASSWORD: z.string().min(12).optional(),
   WORKER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(1000),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 })
