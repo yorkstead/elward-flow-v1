@@ -70,6 +70,30 @@ export function parseTakeoffCsv(params: {
     )
   })
   if (headerRowIndex < 0) {
+    const isJadeClean = /jade.*clean/i.test(params.filename)
+    const hasValidJadeCleanShape =
+      rows.length > 0 &&
+      rows.every(
+        (row) =>
+          row.length === 5 &&
+          row[0]?.trim() &&
+          Number.isInteger(Number(row[1])) &&
+          Number(row[1]) >= 1 &&
+          Number.isFinite(Number(row[2])) &&
+          Number.isFinite(Number(row[3])) &&
+          Number.isFinite(Number(row[4])),
+      )
+    if (isJadeClean && hasValidJadeCleanShape) {
+      return rows.map((row) => ({
+        mark: row[0].trim(),
+        description: `Panel Mark ${row[0].trim()}`,
+        quantity: Number(row[1]),
+        materialFamily: params.defaultMaterialFamily,
+        width: row[3].trim(),
+        length: row[2].trim(),
+        dimensionUnit: 'in',
+      }))
+    }
     throw new Error(
       `Takeoff '${params.filename}' must include recognizable mark and quantity columns.`,
     )

@@ -91,3 +91,4 @@ belong in an ADR under `docs/adr/`.
 - The supported JADE export maps `Count` to quantity, `ESC Mark Number` to mark, `Family` to description, and `Material` to color/finish while retaining the operator-selected material family.
 - JADE's explicitly metric material thickness is converted to inches before storage because the current panel dimension record uses one explicit unit for thickness, width, and length. Stretch-out height and width remain inches as supplied by the JADE schedule.
 - Title rows, blank rows, UTF-8 byte-order marks, and quoted comma-containing values are accepted. Invalid quantities, thicknesses, and duplicate marks remain blocking errors.
+- Headerless JADE CLEAN schedules are accepted only when the filename identifies the format and every nonblank row matches `mark, count, stretch-out height, stretch-out width, angle`. Fields absent from the compact export, including color and thickness, remain unset rather than receiving invented values.

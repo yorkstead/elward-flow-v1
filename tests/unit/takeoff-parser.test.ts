@@ -58,4 +58,43 @@ describe('takeoff CSV parser', () => {
       }),
     ).toThrow("invalid quantity for mark 'J-52'")
   })
+
+  it('parses a validated headerless JADE CLEAN schedule', () => {
+    const marks = parseTakeoffCsv({
+      csvText: ['J-51,3,24.5,48.25,90', 'J-52,2,30,60,90'].join('\n'),
+      filename: 'Fictional Panel Schedule (JADE)CLEAN.csv',
+      defaultMaterialFamily: 'Swisspearl',
+    })
+
+    expect(marks).toEqual([
+      {
+        mark: 'J-51',
+        description: 'Panel Mark J-51',
+        quantity: 3,
+        materialFamily: 'Swisspearl',
+        width: '48.25',
+        length: '24.5',
+        dimensionUnit: 'in',
+      },
+      {
+        mark: 'J-52',
+        description: 'Panel Mark J-52',
+        quantity: 2,
+        materialFamily: 'Swisspearl',
+        width: '60',
+        length: '30',
+        dimensionUnit: 'in',
+      },
+    ])
+  })
+
+  it('does not treat arbitrary headerless CSV data as JADE CLEAN', () => {
+    expect(() =>
+      parseTakeoffCsv({
+        csvText: 'J-51,3,24.5,48.25,90',
+        filename: 'fictional-unknown.csv',
+        defaultMaterialFamily: 'Swisspearl',
+      }),
+    ).toThrow('must include recognizable mark and quantity columns')
+  })
 })
