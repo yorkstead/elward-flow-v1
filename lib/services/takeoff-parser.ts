@@ -24,6 +24,24 @@ export function isTakeoffCsvCandidate(input: {
   )
 }
 
+export interface TakeoffCsvFileInput {
+  filename: string
+  csvText: string
+  category: string
+  isUncertain: boolean
+}
+
+function scheduleLabel(filename: string) {
+  return filename
+    .match(/\(([^)]+)\)/)?.[1]
+    ?.trim()
+    .toUpperCase()
+}
+
+function isCompactSchedule(filename: string) {
+  return /\)[_\s-]*clean(?:_|\.)/i.test(filename)
+}
+
 function parseCsvRows(csvText: string): string[][] {
   const rows: string[][] = []
   let row: string[] = []
@@ -83,7 +101,7 @@ export function parseTakeoffCsv(params: {
     )
   })
   if (headerRowIndex < 0) {
-    const isJadeClean = /jade.*clean/i.test(params.filename)
+    const isJadeClean = isCompactSchedule(params.filename)
     const hasValidJadeCleanShape =
       rows.length > 0 &&
       rows.every(
@@ -98,8 +116,8 @@ export function parseTakeoffCsv(params: {
       )
     if (isJadeClean && hasValidJadeCleanShape) {
       return rows.map((row) => ({
-        mark: row[0].trim(),
-        description: `Panel Mark ${row[0].trim()}`,
+        mark: row[0].replace(/^\uFEFF/, '').trim(),
+        description: `Panel Mark ${row[0].replace(/^\uFEFF/, '').trim()}`,
         quantity: Number(row[1]),
         materialFamily: params.defaultMaterialFamily,
         width: row[3].trim(),
@@ -166,4 +184,63 @@ export function parseTakeoffCsv(params: {
       },
     ]
   })
+}
+
+export function parseTakeoffCsvFiles(params: {
+  files: TakeoffCsvFileInput[]
+  defaultMaterialFamily: string
+}): ParsedPanelMarkInput[] {
+  const candidates = params.files.filter(isTakeoffCsvCandidate)
+  const grouped = new Map<
+    string,
+    { label?: string; files: TakeoffCsvFileInput[] }
+  >()
+
+  for (const file of candidates) {
+    const label = scheduleLabel(file.filename)
+    const key = label || file.filename.toLowerCase()
+    const group = grouped.get(key) || { label, files: [] }
+    group.files.push(file)
+    grouped.set(key, group)
+  }
+
+  const parsedGroups = [...grouped.values()].map((group) => {
+    const orderedFiles = [...group.files].sort(
+      (left, right) =>
+        Number(isCompactSchedule(left.filename)) -
+        Number(isCompactSchedule(right.filename)),
+    )
+    let fallbackError: unknown
+    for (const file of orderedFiles) {
+      try {
+        const marks = parseTakeoffCsv({
+          csvText: file.csvText,
+          filename: file.filename,
+          defaultMaterialFamily: params.defaultMaterialFamily,
+        })
+        if (marks.length > 0) return { label: group.label, marks }
+      } catch (error) {
+        fallbackError = error
+      }
+    }
+    if (fallbackError) throw fallbackError
+    return { label: group.label, marks: [] }
+  })
+
+  const namespaceMarks =
+    parsedGroups.filter((group) => group.marks.length).length > 1
+  return parsedGroups.flatMap((group) =>
+    group.marks.map((mark) => {
+      if (!namespaceMarks || !group.label) return mark
+      const namespacedMark = `${group.label}-${mark.mark}`
+      return {
+        ...mark,
+        mark: namespacedMark,
+        description:
+          mark.description === `Panel Mark ${mark.mark}`
+            ? `Panel Mark ${namespacedMark}`
+            : mark.description,
+      }
+    }),
+  )
 }

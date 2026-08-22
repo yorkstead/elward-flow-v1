@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   isTakeoffCsvCandidate,
   parseTakeoffCsv,
+  parseTakeoffCsvFiles,
 } from '@/lib/services/takeoff-parser'
 
 describe('takeoff CSV parser', () => {
@@ -116,5 +117,47 @@ describe('takeoff CSV parser', () => {
         defaultMaterialFamily: 'Swisspearl',
       }),
     ).toThrow('must include recognizable mark and quantity columns')
+  })
+
+  it('selects one representation per finish and namespaces overlapping marks', () => {
+    const header =
+      'Count,ESC Mark Number,Family,Material,Material Thickness mm,Stretch out Height,Stretch out Width'
+    const files = [
+      {
+        filename: 'Panel Schedule (JADE).csv',
+        csvText: `${header}\n2,1,Fictional Panel,Carat - Test Jade,8,24,48`,
+      },
+      {
+        filename: 'Panel Schedule (JADE)CLEAN.csv',
+        csvText: '\uFEFF1,2,24,48,90',
+      },
+      {
+        filename: 'Panel Schedule (PETROL).csv',
+        csvText: `${header}\n3,,Fictional Panel,Carat - Test Petrol,8,30,60`,
+      },
+      {
+        filename: 'Panel Schedule (PETROL)CLEAN.csv',
+        csvText: '\uFEFF1,3,30,60,90',
+      },
+      {
+        filename: 'ErrorLog - Panel Schedule (PETROL)CLEAN_csv.csv',
+        csvText: 'Message,Quantity\nIMPORTED,3',
+      },
+    ].map((file) => {
+      const isErrorLog = file.filename.startsWith('ErrorLog')
+      return {
+        ...file,
+        category: isErrorLog ? 'other' : 'takeoff',
+        isUncertain: isErrorLog,
+      }
+    })
+
+    const marks = parseTakeoffCsvFiles({
+      files,
+      defaultMaterialFamily: 'Swisspearl',
+    })
+
+    expect(marks.map((mark) => mark.mark)).toEqual(['JADE-1', 'PETROL-1'])
+    expect(marks.map((mark) => mark.quantity)).toEqual([2, 3])
   })
 })

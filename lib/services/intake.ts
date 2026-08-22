@@ -8,7 +8,11 @@ import {
   type DocumentCategoryCode,
   type ClassificationResult,
 } from './classifier'
-import { isTakeoffCsvCandidate, parseTakeoffCsv } from './takeoff-parser'
+import {
+  isTakeoffCsvCandidate,
+  parseTakeoffCsvFiles,
+  type TakeoffCsvFileInput,
+} from './takeoff-parser'
 
 export interface ParsedPanelMarkInput {
   mark: string
@@ -157,6 +161,7 @@ export class IntakeService {
 
     const processedFiles: IntakeFileItem[] = []
     const parsedMarks: ParsedPanelMarkInput[] = []
+    const takeoffCsvFiles: TakeoffCsvFileInput[] = []
 
     if (isZip) {
       // 3. Safely Extract ZIP contents
@@ -219,15 +224,20 @@ export class IntakeService {
             isUncertain: item.classification.isUncertain,
           })
         ) {
-          parsedMarks.push(
-            ...parseTakeoffCsv({
-              csvText: item.buffer.toString('utf-8'),
-              filename: item.filename,
-              defaultMaterialFamily: materialFamily,
-            }),
-          )
+          takeoffCsvFiles.push({
+            filename: item.filename,
+            csvText: item.buffer.toString('utf-8'),
+            category: item.classification.category,
+            isUncertain: item.classification.isUncertain,
+          })
         }
       }
+      parsedMarks.push(
+        ...parseTakeoffCsvFiles({
+          files: takeoffCsvFiles,
+          defaultMaterialFamily: materialFamily,
+        }),
+      )
     } else {
       // Single PDF drawing upload
       const singleClassification = DocumentClassifier.classify(filename)
