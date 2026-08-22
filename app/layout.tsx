@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Open_Sans, Roboto_Condensed } from 'next/font/google'
 import { OfflineStatus } from '@/components/offline-status'
+import { AppLaunchGate } from '@/components/brand/app-launch-gate'
 import './globals.css'
 
 const openSans = Open_Sans({
@@ -51,6 +52,7 @@ export default function RootLayout({
       className={`${openSans.variable} ${robotoCondensed.variable} h-full antialiased`}
     >
       <body className="flex min-h-full w-full max-w-full flex-col overflow-x-hidden font-sans">
+        <AppLaunchGate />
         <OfflineStatus />
         {children}
       </body>
