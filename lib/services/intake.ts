@@ -8,7 +8,7 @@ import {
   type DocumentCategoryCode,
   type ClassificationResult,
 } from './classifier'
-import { parseTakeoffCsv } from './takeoff-parser'
+import { isTakeoffCsvCandidate, parseTakeoffCsv } from './takeoff-parser'
 
 export interface ParsedPanelMarkInput {
   mark: string
@@ -212,7 +212,13 @@ export class IntakeService {
         })
 
         // Check if file is a CSV takeoff schedule
-        if (item.filename.toLowerCase().endsWith('.csv')) {
+        if (
+          isTakeoffCsvCandidate({
+            filename: item.filename,
+            category: item.classification.category,
+            isUncertain: item.classification.isUncertain,
+          })
+        ) {
           parsedMarks.push(
             ...parseTakeoffCsv({
               csvText: item.buffer.toString('utf-8'),

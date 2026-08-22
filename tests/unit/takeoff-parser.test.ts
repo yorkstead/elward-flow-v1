@@ -1,7 +1,27 @@
 import { describe, expect, it } from 'vitest'
-import { parseTakeoffCsv } from '@/lib/services/takeoff-parser'
+import {
+  isTakeoffCsvCandidate,
+  parseTakeoffCsv,
+} from '@/lib/services/takeoff-parser'
 
 describe('takeoff CSV parser', () => {
+  it('selects the real schedule and excludes generated error-log companions', () => {
+    expect(
+      isTakeoffCsvCandidate({
+        filename: 'Panel Schedule (JADE)CLEAN.csv',
+        category: 'takeoff',
+        isUncertain: false,
+      }),
+    ).toBe(true)
+    expect(
+      isTakeoffCsvCandidate({
+        filename: 'ErrorLog - Panel Schedule (JADE)CLEAN_csv.csv',
+        category: 'other',
+        isUncertain: true,
+      }),
+    ).toBe(false)
+  })
+
   it('parses the standard Elward takeoff format by header name', () => {
     const marks = parseTakeoffCsv({
       csvText: [

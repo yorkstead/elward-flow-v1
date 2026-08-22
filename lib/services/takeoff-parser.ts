@@ -11,6 +11,19 @@ const HEADER_ALIASES = {
   length: ['length', 'height', 'stretch out height'],
 } as const
 
+export function isTakeoffCsvCandidate(input: {
+  filename: string
+  category: string
+  isUncertain: boolean
+}) {
+  return (
+    input.filename.toLowerCase().endsWith('.csv') &&
+    input.category === 'takeoff' &&
+    !input.isUncertain &&
+    !/^error[_\-\s]*log\b/i.test(input.filename)
+  )
+}
+
 function parseCsvRows(csvText: string): string[][] {
   const rows: string[][] = []
   let row: string[] = []

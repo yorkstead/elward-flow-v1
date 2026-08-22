@@ -196,6 +196,18 @@ export class DocumentClassifier {
       ? `${relativePath}/${filename}`.toLowerCase()
       : filename.toLowerCase()
 
+    if (/^error[_\-\s]*log\b/i.test(filename)) {
+      return {
+        category: 'other',
+        name: 'Unclassified Document',
+        confidence: 0.95,
+        matchReason:
+          'Generated error log excluded from controlled takeoff data',
+        isUncertain: true,
+        defaultDepartment: 'Drafting',
+      }
+    }
+
     for (const cat of STANDARD_DOCUMENT_CATEGORIES) {
       for (const pattern of cat.patterns) {
         if (pattern.test(fullPath)) {

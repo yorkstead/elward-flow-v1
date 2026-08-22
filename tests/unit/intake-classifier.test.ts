@@ -49,6 +49,14 @@ describe('DocumentClassifier & Safe ZIP Extraction', () => {
       )
       expect(result.category).toBe('takeoff')
     })
+
+    it('does not classify generated error logs as takeoff schedules', () => {
+      const result = DocumentClassifier.classify(
+        'ErrorLog - Panel Schedule (JADE)CLEAN_csv.csv',
+      )
+      expect(result.category).toBe('other')
+      expect(result.isUncertain).toBe(true)
+    })
   })
 
   describe('Material Family Expected Categories', () => {
