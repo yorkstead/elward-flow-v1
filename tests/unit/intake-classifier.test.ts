@@ -55,7 +55,44 @@ describe('DocumentClassifier & Safe ZIP Extraction', () => {
         'ErrorLog - Panel Schedule (JADE)CLEAN_csv.csv',
       )
       expect(result.category).toBe('other')
+      expect(result.isUncertain).toBe(false)
+    })
+
+    it('does not let a takeoff folder classify unrelated files', () => {
+      const result = DocumentClassifier.classify(
+        'notes.txt',
+        '25036/12.2025_TAKEOFF/notes.txt',
+      )
+      expect(result.category).toBe('other')
       expect(result.isUncertain).toBe(true)
+    })
+
+    it('offers unclassified DWG files as reviewable cut drawings', () => {
+      const result = DocumentClassifier.classify('WorkingDrawing1.dwg')
+      expect(result.category).toBe('cut_drawing')
+      expect(result.isUncertain).toBe(true)
+    })
+
+    it('retains known support artifacts without blocking review', () => {
+      for (const filename of [
+        'desktop.ini',
+        'JADE_REVIT TAKEOFF.bak',
+        'Material Release Letter - Fictional.docx',
+        '25036 Order Cover Sheets_fictional.pdf',
+        '25036_WasteFactorSheet.pdf',
+      ]) {
+        const result = DocumentClassifier.classify(filename)
+        expect(result.category).toBe('other')
+        expect(result.isUncertain).toBe(false)
+      }
+    })
+
+    it('classifies rail documents as optional accessory schedules', () => {
+      const result = DocumentClassifier.classify(
+        'FICTIONAL_PROJECT_RAILS_1.12.26.pdf',
+      )
+      expect(result.category).toBe('accessory_list')
+      expect(result.isUncertain).toBe(false)
     })
   })
 

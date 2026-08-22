@@ -102,3 +102,7 @@ belong in an ADR under `docs/adr/`.
 - Assembly drawings remain optional and are included when clip installation or another actual assembly step applies.
 - Accessory and hardware schedules remain optional because rail and installation-hardware information is included inconsistently by release.
 - Architectural elevations and key plans remain supported document categories but are not mandatory for Swisspearl release approval.
+- Parent folder names do not classify every contained file. Classification patterns apply to the file name so a `TAKEOFF` directory cannot turn drawings, backups, or system metadata into panel schedules.
+- Generated error logs, operating-system metadata, backup files, material release letters, order cover/reminder sheets, and waste-factor sheets are retained as non-routing support artifacts without requiring manual review. Rail documents classify as optional accessory schedules.
+- An uncertain file has an explicit **Confirm** action. Reviewers can accept the currently displayed category without first changing it to an incorrect category and back again.
+- Unclassified PDF and DWG drawings default to a reviewable cut-drawing suggestion. The suggestion can satisfy the visible document category, but the reviewer must explicitly confirm it before continuing.

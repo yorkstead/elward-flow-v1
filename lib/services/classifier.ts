@@ -100,6 +100,7 @@ export const STANDARD_DOCUMENT_CATEGORIES: ClassificationRule[] = [
       /hardware[_\-\s]*(list|schedule)?/i,
       /fastener[_\-\s]*schedule/i,
       /clip[_\-\s]*list/i,
+      /rails?/i,
       /gasket[_\-\s]*schedule/i,
       /rivet[_\-\s]*schedule/i,
     ],
@@ -190,11 +191,10 @@ export class DocumentClassifier {
    */
   public static classify(
     filename: string,
-    relativePath?: string,
+    _relativePath?: string,
   ): ClassificationResult {
-    const fullPath = relativePath
-      ? `${relativePath}/${filename}`.toLowerCase()
-      : filename.toLowerCase()
+    void _relativePath
+    const classificationTarget = filename.toLowerCase()
 
     if (/^error[_\-\s]*log\b/i.test(filename)) {
       return {
@@ -203,14 +203,33 @@ export class DocumentClassifier {
         confidence: 0.95,
         matchReason:
           'Generated error log excluded from controlled takeoff data',
-        isUncertain: true,
+        isUncertain: false,
+        defaultDepartment: 'Drafting',
+      }
+    }
+
+    if (
+      filename.toLowerCase() === 'desktop.ini' ||
+      filename.toLowerCase().endsWith('.bak') ||
+      /material[_\-\s]*release[_\-\s]*letter/i.test(filename) ||
+      /order[_\-\s]*(cover|reminder)[_\-\s]*sheets?/i.test(filename) ||
+      /waste[_\-\s]*factor[_\-\s]*sheet/i.test(filename)
+    ) {
+      return {
+        category: 'other',
+        name: 'Unclassified Document',
+        confidence: 0.95,
+        matchReason: 'Recognized supporting file retained outside shop routing',
+        isUncertain: false,
         defaultDepartment: 'Drafting',
       }
     }
 
     for (const cat of STANDARD_DOCUMENT_CATEGORIES) {
+      if (cat.code === 'takeoff' && !/\.(csv|xlsx|xls)$/i.test(filename))
+        continue
       for (const pattern of cat.patterns) {
-        if (pattern.test(fullPath)) {
+        if (pattern.test(classificationTarget)) {
           return {
             category: cat.code,
             name: cat.name,
@@ -224,12 +243,15 @@ export class DocumentClassifier {
     }
 
     // Secondary heuristics based on extension
-    if (filename.toLowerCase().endsWith('.pdf')) {
+    if (
+      filename.toLowerCase().endsWith('.pdf') ||
+      filename.toLowerCase().endsWith('.dwg')
+    ) {
       return {
         category: 'cut_drawing',
         name: 'Cut Drawing / Sheet',
         confidence: 0.5,
-        matchReason: 'Default fallback for unclassified PDF drawing',
+        matchReason: 'Default fallback for unclassified drawing',
         isUncertain: true,
         defaultDepartment: 'CNC',
       }

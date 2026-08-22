@@ -670,6 +670,21 @@ export function IntakeWizard({
                     </SelectContent>
                   </Select>
 
+                  {file.classification.isUncertain && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        updateFileCategory(idx, file.classification.category)
+                      }
+                      className="h-8 text-xs"
+                    >
+                      <ShieldCheck className="mr-1.5 h-3.5 w-3.5" />
+                      Confirm
+                    </Button>
+                  )}
+
                   <Button
                     type="button"
                     variant="outline"
