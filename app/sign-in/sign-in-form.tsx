@@ -33,6 +33,7 @@ export function SignInForm({
           type="email"
           autoComplete="username"
           required
+          className="border-input min-h-12 bg-white"
         />
       </div>
       <div className="space-y-2">
@@ -44,14 +45,21 @@ export function SignInForm({
           autoComplete="current-password"
           minLength={12}
           required
+          className="border-input min-h-12 bg-white"
         />
       </div>
       {invalidCredentials ? (
-        <p role="alert" className="text-sm font-medium text-red-700">
+        <p
+          role="alert"
+          className="rounded-md border border-red-300 bg-red-50 p-3 text-sm font-semibold text-red-800"
+        >
           Email or password is incorrect.
         </p>
       ) : null}
-      <Button type="submit" className="min-h-12 w-full">
+      <Button
+        type="submit"
+        className="font-heading min-h-12 w-full text-sm font-bold tracking-[0.08em] uppercase"
+      >
         Sign in
       </Button>
     </form>

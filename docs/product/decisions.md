@@ -40,3 +40,11 @@ belong in an ADR under `docs/adr/`.
 - Expanded the hosted quality gate to provision PostgreSQL and MinIO and run formatting, linting, strict type checking, migrations, seed verification, 60 unit tests, database integration tests, a production build, and 13 Chromium workflow tests.
 - Replaced committed development authentication defaults and browser-test password fallbacks with generated local credentials and ephemeral masked CI credentials.
 - Project status is "integrated MVP approaching internal pilot," not production-ready. A green repository quality gate does not replace deployment verification, production configuration review, backup/restore rehearsal, performance validation, or user acceptance in the target operating environment.
+
+## 2026-08-22 — Elward Flow brand interpretation
+
+- Adopted the authentic public-site navy, blue, orange, cool gray, Open Sans body typography, and DIN-like uppercase heading treatment documented in `docs/brand/elward-flow-brand-audit.md`.
+- Preserved the application as a dark-first industrial operating product rather than reproducing the public marketing layout or its image-led presentation.
+- Reserved corporate blue for primary actions and orange for branded emphasis and focus; operational pass, hold, warning, scrap, and obsolete-revision states retain their independent semantic colors, labels, and icons.
+- Stored a byte-identical copy of the current public corporate PNG locally. Because no approved standalone reversed corporate logo or vector master was verified, dark-shell placements use the authentic full-color logo on a light plate and do not invent a white corporate variant.
+- Selected open-source Roboto Condensed as an application-specific DIN-like heading alternative because reuse rights for the website's DINWeb files were not verified.

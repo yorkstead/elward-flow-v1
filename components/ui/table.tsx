@@ -11,7 +11,7 @@ function Table({ className, ...props }: React.ComponentProps<'table'>) {
       tabIndex={0}
       role="region"
       aria-label="Scrollable table"
-      className="relative w-full overflow-x-auto focus-visible:outline-hidden"
+      className="focus-visible:ring-ring relative w-full overflow-x-auto rounded-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
     >
       <table
         data-slot="table"
@@ -73,7 +73,7 @@ function TableHead({ className, ...props }: React.ComponentProps<'th'>) {
     <th
       data-slot="table-head"
       className={cn(
-        'text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0',
+        'bg-muted/60 text-foreground font-heading h-10 px-2 text-left align-middle text-xs font-semibold tracking-wide whitespace-nowrap uppercase [&:has([role=checkbox])]:pr-0',
         className,
       )}
       {...props}

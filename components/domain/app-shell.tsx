@@ -70,7 +70,7 @@ export function AppShell({
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-100 text-slate-900 antialiased selection:bg-blue-600 selection:text-white">
+    <div className="bg-flow-workspace text-foreground selection:bg-brand-orange selection:text-brand-navy flex min-h-screen flex-col antialiased">
       <NavHeader
         user={user}
         siteName={siteName}
@@ -81,8 +81,8 @@ export function AppShell({
 
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop / Tablet Sidebar */}
-        <aside className="hidden w-56 shrink-0 flex-col space-y-1 overflow-y-auto border-r bg-white p-3 md:flex lg:w-64">
-          <div className="px-3 py-2 text-[11px] font-bold tracking-wider text-slate-600 uppercase">
+        <aside className="flow-panel-grid border-sidebar-border bg-sidebar text-sidebar-foreground hidden w-56 shrink-0 flex-col space-y-1 overflow-y-auto border-r p-3 md:flex lg:w-64">
+          <div className="font-heading px-3 py-2 text-[11px] font-bold tracking-[0.16em] text-slate-300 uppercase">
             Operations Chain
           </div>
 
@@ -94,14 +94,14 @@ export function AppShell({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                  className={`flex min-h-11 items-center gap-3 rounded-md border-l-2 px-3 py-2.5 text-sm font-medium transition-all ${
                     active
-                      ? 'bg-blue-600 font-semibold text-white shadow-xs'
-                      : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                      ? 'border-brand-orange bg-sidebar-primary text-sidebar-primary-foreground font-semibold shadow-xs'
+                      : 'hover:bg-sidebar-accent border-transparent text-slate-200 hover:border-slate-400 hover:text-white'
                   }`}
                 >
                   <Icon
-                    className={`h-4 w-4 shrink-0 ${active ? 'text-white' : 'text-slate-500'}`}
+                    className={`h-4 w-4 shrink-0 ${active ? 'text-white' : 'text-slate-400'}`}
                   />
                   <span className="truncate">{item.label}</span>
                 </Link>
@@ -117,12 +117,12 @@ export function AppShell({
               className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs"
               onClick={() => setMobileMenuOpen(false)}
             />
-            <div className="relative z-10 flex h-full w-4/5 max-w-xs flex-col overflow-y-auto bg-white p-4 shadow-xl">
-              <div className="flex items-center justify-between border-b pb-4">
+            <div className="flow-panel-grid bg-sidebar text-sidebar-foreground relative z-10 flex h-full w-4/5 max-w-xs flex-col overflow-y-auto p-4 shadow-xl">
+              <div className="border-sidebar-border flex items-center justify-between border-b pb-4">
                 <span className="text-base font-bold">Navigation</span>
                 <button
                   onClick={() => setMobileMenuOpen(false)}
-                  className="rounded-md p-1 text-slate-400 hover:text-slate-600"
+                  className="hover:bg-sidebar-accent min-h-11 min-w-11 rounded-md p-2 text-slate-300 hover:text-white"
                   aria-label="Close menu"
                 >
                   <X className="h-5 w-5" />
@@ -137,10 +137,10 @@ export function AppShell({
                       key={item.href}
                       href={item.href}
                       onClick={() => setMobileMenuOpen(false)}
-                      className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium ${
+                      className={`flex min-h-12 items-center gap-3 rounded-md border-l-2 px-3 py-3 text-sm font-medium ${
                         active
-                          ? 'bg-blue-600 font-semibold text-white'
-                          : 'text-slate-700 hover:bg-slate-100'
+                          ? 'border-brand-orange bg-sidebar-primary font-semibold text-white'
+                          : 'hover:bg-sidebar-accent border-transparent text-slate-200 hover:text-white'
                       }`}
                     >
                       <Icon className="h-4 w-4 shrink-0" />
@@ -158,13 +158,13 @@ export function AppShell({
       </div>
 
       {/* Mobile bottom quick bar */}
-      <nav className="sticky bottom-0 z-30 grid grid-cols-4 border-t border-slate-200 bg-white px-2 py-1.5 text-center text-[10px] shadow-lg md:hidden">
+      <nav className="border-sidebar-border bg-sidebar text-sidebar-foreground sticky bottom-0 z-30 grid grid-cols-4 border-t px-2 py-1.5 text-center text-[10px] shadow-lg md:hidden">
         <Link
           href="/dashboard"
-          className={`flex flex-col items-center rounded-md py-1 ${
+          className={`flex min-h-12 flex-col items-center justify-center rounded-md border-t-2 py-1 ${
             isActive('/dashboard', true)
-              ? 'font-bold text-blue-600'
-              : 'text-slate-600'
+              ? 'border-brand-orange font-bold text-white'
+              : 'border-transparent text-slate-300'
           }`}
         >
           <Compass className="mb-0.5 h-5 w-5" />
@@ -172,8 +172,10 @@ export function AppShell({
         </Link>
         <Link
           href="/scan"
-          className={`flex flex-col items-center rounded-md py-1 ${
-            isActive('/scan') ? 'font-bold text-blue-600' : 'text-slate-600'
+          className={`flex min-h-12 flex-col items-center justify-center rounded-md border-t-2 py-1 ${
+            isActive('/scan')
+              ? 'border-brand-orange font-bold text-white'
+              : 'border-transparent text-slate-300'
           }`}
         >
           <QrCode className="mb-0.5 h-5 w-5" />
@@ -181,10 +183,10 @@ export function AppShell({
         </Link>
         <Link
           href="/production"
-          className={`flex flex-col items-center rounded-md py-1 ${
+          className={`flex min-h-12 flex-col items-center justify-center rounded-md border-t-2 py-1 ${
             isActive('/production')
-              ? 'font-bold text-blue-600'
-              : 'text-slate-600'
+              ? 'border-brand-orange font-bold text-white'
+              : 'border-transparent text-slate-300'
           }`}
         >
           <Cpu className="mb-0.5 h-5 w-5" />
@@ -192,8 +194,10 @@ export function AppShell({
         </Link>
         <Link
           href="/quality"
-          className={`flex flex-col items-center rounded-md py-1 ${
-            isActive('/quality') ? 'font-bold text-blue-600' : 'text-slate-600'
+          className={`flex min-h-12 flex-col items-center justify-center rounded-md border-t-2 py-1 ${
+            isActive('/quality')
+              ? 'border-brand-orange font-bold text-white'
+              : 'border-transparent text-slate-300'
           }`}
         >
           <ShieldAlert className="mb-0.5 h-5 w-5" />
