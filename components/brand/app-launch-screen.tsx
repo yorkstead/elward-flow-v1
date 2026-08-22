@@ -2,7 +2,7 @@ import { ElwardFlowBrand } from './elward-flow-brand'
 
 export function AppLaunchScreen() {
   return (
-    <main
+    <div
       className="flow-panel-grid bg-flow-chrome relative grid min-h-dvh w-full place-items-center overflow-hidden px-6 py-10 text-white"
       aria-busy="true"
       aria-live="polite"
@@ -41,6 +41,6 @@ export function AppLaunchScreen() {
           Release to shipment • America/Denver
         </p>
       </section>
-    </main>
+    </div>
   )
 }
