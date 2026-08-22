@@ -8,6 +8,7 @@ import {
   type DocumentCategoryCode,
   type ClassificationResult,
 } from './classifier'
+import { parseTakeoffCsv } from './takeoff-parser'
 
 export interface ParsedPanelMarkInput {
   mark: string
@@ -212,38 +213,13 @@ export class IntakeService {
 
         // Check if file is a CSV takeoff schedule
         if (item.filename.toLowerCase().endsWith('.csv')) {
-          const csvText = item.buffer.toString('utf-8')
-          const lines = csvText.split(/\r?\n/).filter((l) => l.trim())
-          const headers = (lines[0] || '')
-            .split(',')
-            .map((header) => header.trim().toLowerCase())
-          if (headers[0] !== 'mark' || headers[2] !== 'quantity') {
-            throw new Error(
-              `Takeoff '${item.filename}' must begin with mark, description, quantity columns.`,
-            )
-          }
-          for (let i = 1; i < lines.length; i++) {
-            const cols = lines[i].split(',').map((c) => c.trim())
-            if (cols[0]) {
-              const quantity = Number(cols[2])
-              if (!Number.isInteger(quantity) || quantity < 1) {
-                throw new Error(
-                  `Takeoff '${item.filename}' has an invalid quantity for mark '${cols[0]}'.`,
-                )
-              }
-              parsedMarks.push({
-                mark: cols[0],
-                description: cols[1] || `Panel Mark ${cols[0]}`,
-                quantity,
-                materialFamily: cols[3] || materialFamily,
-                color: cols[4] || 'Bone White',
-                thickness: cols[5] || '0.1570',
-                width: cols[6] || '48.0000',
-                length: cols[7] || '120.0000',
-                dimensionUnit: 'in',
-              })
-            }
-          }
+          parsedMarks.push(
+            ...parseTakeoffCsv({
+              csvText: item.buffer.toString('utf-8'),
+              filename: item.filename,
+              defaultMaterialFamily: materialFamily,
+            }),
+          )
         }
       }
     } else {

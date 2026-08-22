@@ -84,3 +84,10 @@ belong in an ADR under `docs/adr/`.
 - The initial App Router loading state uses the authentic local Elward lockup and Elward Flow's dark industrial presentation. It communicates workspace preparation without implying that operational data is ready before authentication and server data resolve.
 - Phone layouts constrain the document and application shell to the viewport so the primary page moves vertically only. Wide operational tables may retain contained horizontal scrolling inside their own labeled data region where collapsing columns would obscure quantities, revisions, or status.
 - The mobile header reduces the global search control to its accessible icon action and hides the Flow suffix at narrow breakpoints while preserving the authentic Elward logo proportions.
+
+## 2026-08-22 — Panel takeoff CSV compatibility
+
+- Release intake resolves panel schedules by normalized header names instead of requiring one fixed column order.
+- The supported JADE export maps `Count` to quantity, `ESC Mark Number` to mark, `Family` to description, and `Material` to color/finish while retaining the operator-selected material family.
+- JADE's explicitly metric material thickness is converted to inches before storage because the current panel dimension record uses one explicit unit for thickness, width, and length. Stretch-out height and width remain inches as supplied by the JADE schedule.
+- Title rows, blank rows, UTF-8 byte-order marks, and quoted comma-containing values are accepted. Invalid quantities, thicknesses, and duplicate marks remain blocking errors.
