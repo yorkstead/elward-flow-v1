@@ -43,17 +43,27 @@ export class MinioFileStore implements FileStore {
     if (input.expectedSha256 && input.expectedSha256 !== digest)
       throw new Error('Upload hash does not match expected SHA-256')
     try {
-      await this.client.send(
+      const existing = await this.client.send(
         new HeadObjectCommand({
           Bucket: this.environment.MINIO_BUCKET,
           Key: input.key,
         }),
       )
-      throw new Error('Immutable object already exists')
+      if (
+        existing.Metadata?.sha256 !== digest ||
+        existing.ContentLength !== input.body.byteLength
+      )
+        throw new Error('Immutable object key collision')
+      return {
+        key: input.key,
+        contentType: existing.ContentType ?? input.contentType,
+        byteSize: input.body.byteLength,
+        sha256: digest,
+      }
     } catch (error) {
       if (
         error instanceof Error &&
-        error.message === 'Immutable object already exists'
+        error.message === 'Immutable object key collision'
       )
         throw error
     }

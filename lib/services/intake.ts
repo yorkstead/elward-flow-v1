@@ -1,5 +1,6 @@
 import { db } from '@/db'
 import { auditEvents, storedFiles } from '@/db/schema'
+import { eq } from 'drizzle-orm'
 import { getFileStore } from '@/lib/files/minio-file-store'
 import { sha256 } from '@/lib/files/hash'
 import {
@@ -106,7 +107,7 @@ export class IntakeService {
       expectedSha256: rawDigest,
     })
 
-    const [rawStored] = await db
+    const [insertedRawStored] = await db
       .insert(storedFiles)
       .values({
         organizationId,
@@ -117,7 +118,19 @@ export class IntakeService {
         sha256: rawDigest,
         uploadedById,
       })
+      .onConflictDoNothing({ target: storedFiles.objectKey })
       .returning()
+    const rawStored =
+      insertedRawStored ??
+      (
+        await db
+          .select()
+          .from(storedFiles)
+          .where(eq(storedFiles.objectKey, rawObjectKey))
+          .limit(1)
+      )[0]
+    if (!rawStored || rawStored.sha256 !== rawDigest)
+      throw new Error('Stored release package metadata does not match upload.')
 
     // 2. Infer Job Number and Release Number from filename
     let inferredJobNumber = manualJobNumber || '54120'
@@ -159,7 +172,7 @@ export class IntakeService {
           expectedSha256: itemDigest,
         })
 
-        const [itemStored] = await db
+        const [insertedItemStored] = await db
           .insert(storedFiles)
           .values({
             organizationId,
@@ -170,7 +183,21 @@ export class IntakeService {
             sha256: itemDigest,
             uploadedById,
           })
+          .onConflictDoNothing({ target: storedFiles.objectKey })
           .returning()
+        const itemStored =
+          insertedItemStored ??
+          (
+            await db
+              .select()
+              .from(storedFiles)
+              .where(eq(storedFiles.objectKey, itemKey))
+              .limit(1)
+          )[0]
+        if (!itemStored || itemStored.sha256 !== itemDigest)
+          throw new Error(
+            `Stored metadata for '${item.filename}' does not match upload.`,
+          )
 
         processedFiles.push({
           storedFileId: itemStored.id,
