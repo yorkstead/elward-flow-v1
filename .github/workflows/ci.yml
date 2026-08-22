@@ -13,7 +13,6 @@ jobs:
     env:
       NODE_ENV: test
       APP_URL: http://localhost:3000
-      AUTH_SECRET: ci_only_auth_secret_at_least_32_characters_long
       DATABASE_URL: postgresql://elward:elward_local_only@localhost:5432/elward_flow
       MINIO_ENDPOINT: http://localhost:9000
       MINIO_REGION: us-east-1
@@ -21,7 +20,6 @@ jobs:
       MINIO_SECRET_KEY: ci-only-secret-key
       MINIO_BUCKET: elward-flow-ci
       ADMIN_EMAIL: admin@example.test
-      E2E_ADMIN_PASSWORD: CI-only-admin-password-2026!
       WORKER_POLL_INTERVAL_MS: 1000
       LOG_LEVEL: info
 
@@ -51,6 +49,16 @@ jobs:
 
       - name: Install Dependencies
         run: bun install --frozen-lockfile
+
+      - name: Generate Ephemeral Test Secrets
+        shell: bash
+        run: |
+          auth_secret="$(openssl rand -base64 48)"
+          admin_password="CI-$(openssl rand -hex 24)!"
+          echo "::add-mask::$auth_secret"
+          echo "::add-mask::$admin_password"
+          echo "AUTH_SECRET=$auth_secret" >> "$GITHUB_ENV"
+          echo "E2E_ADMIN_PASSWORD=$admin_password" >> "$GITHUB_ENV"
 
       - name: Audit Production Dependencies
         run: bun audit --production

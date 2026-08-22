@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
+import { requireE2EAdminPassword } from './support/environment'
 
 test.describe('Production Planning & Department Execution (Prompt 06)', () => {
   test.setTimeout(60_000)
-  const password = process.env.E2E_ADMIN_PASSWORD || 'Local-nb-C5pY1tqvtrLx_!'
+  const password = requireE2EAdminPassword()
   const email = process.env.ADMIN_EMAIL || 'admin@example.test'
 
   test.beforeEach(async ({ page }) => {

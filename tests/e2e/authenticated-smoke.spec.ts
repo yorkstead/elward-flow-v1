@@ -1,20 +1,16 @@
 import { expect, test } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
+import { requireE2EAdminPassword } from './support/environment'
 test('redirects unauthorized users and authenticates the local administrator', async ({
   page,
 }) => {
-  const password = process.env.E2E_ADMIN_PASSWORD
-  if (!password)
-    test.skip(
-      true,
-      'Set E2E_ADMIN_PASSWORD to the one-time password printed by seed',
-    )
+  const password = requireE2EAdminPassword()
   await page.goto('/dashboard')
   await expect(page).toHaveURL(/\/sign-in/)
   await page
     .getByLabel('Email')
     .fill(process.env.ADMIN_EMAIL ?? 'admin@example.test')
-  await page.getByLabel('Password').fill(password!)
+  await page.getByLabel('Password').fill(password)
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page).toHaveURL(/\/dashboard/)
   await expect(

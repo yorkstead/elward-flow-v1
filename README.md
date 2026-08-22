@@ -10,7 +10,7 @@ Next.js 16 App Router, React 19, strict TypeScript, Tailwind CSS 4, repository-o
 
 ```powershell
 Copy-Item .env.example .env.local
-# Generate and fill AUTH_SECRET; review every local-only credential.
+# Generate AUTH_SECRET with `openssl rand -base64 32` and put it in .env.local.
 bun install
 bun run setup
 bun run dev

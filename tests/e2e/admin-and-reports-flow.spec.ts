@@ -1,8 +1,8 @@
 import { test, expect, type Page } from '@playwright/test'
+import { requireE2EAdminPassword } from './support/environment'
 
 const ADMIN_EMAIL = 'admin@example.test'
-const ADMIN_PASSWORD =
-  process.env.E2E_ADMIN_PASSWORD || 'Local-nb-C5pY1tqvtrLx_!'
+const ADMIN_PASSWORD = requireE2EAdminPassword()
 
 async function loginAdmin(page: Page) {
   await page.goto('/sign-in')

@@ -4,8 +4,8 @@ Prerequisites: Git, Bun 1.3+, Docker Desktop with Compose, and Chromium for Play
 
 ```powershell
 Copy-Item .env.example .env.local
-openssl rand -base64 32
-# Put that value in AUTH_SECRET and review local-only credentials.
+$authSecret = openssl rand -base64 32
+# Put $authSecret in AUTH_SECRET inside .env.local; do not commit the file.
 bun install
 bun run deps:up
 bun run db:migrate
