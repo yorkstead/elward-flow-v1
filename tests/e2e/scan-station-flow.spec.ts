@@ -88,8 +88,12 @@ test.describe('Shop Floor Scan Station & Movement Ledger (Prompt 05)', () => {
     await expect(
       page.getByRole('heading', { name: 'SUPERSEDED REVISION DETECTED' }),
     ).toBeVisible()
-    await expect(page.getByText(/Rev PRELIM.*SUPERSEDED/i)).toBeVisible()
-    await expect(page.getByText(/Rev A.*APPROVED/i)).toBeVisible()
+    await expect(
+      page.getByText('Rev PRELIM (SUPERSEDED)', { exact: true }),
+    ).toBeVisible()
+    await expect(
+      page.getByText('Rev A (APPROVED)', { exact: true }),
+    ).toBeVisible()
     await page.getByRole('button', { name: /Dismiss/i }).click()
 
     // 8. Accessibility Audit on Scan Station
