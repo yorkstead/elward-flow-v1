@@ -1,14 +1,16 @@
 # Product Decisions
 
 Record changed product or operational assumptions here. Architectural decisions
-belong in an ADR under `docs/architecture/`.
+belong in an ADR under `docs/adr/`.
 
 ## 2026-08-17 — Repository baseline
 
 - The canonical repository and Vercel project name is `elward-flow-v1`.
 - Bun is the repository package manager.
-- The initial repository is a platform baseline only. PostgreSQL, Drizzle,
-  Auth.js, FileStore, the job worker, and test tooling remain future milestones.
+- At this baseline date, the repository contained platform scaffolding only and
+  PostgreSQL, Drizzle, Auth.js, FileStore, the job worker, and test tooling were
+  planned milestones. The later entries below record their implementation; this
+  statement is retained as historical context, not current project status.
 
 ## 2026-08-19 — Prompt 02: Domain model, permissions matrix, and schema unification
 
@@ -19,8 +21,22 @@ belong in an ADR under `docs/architecture/`.
 - Implemented staged configuration registry where proposed changes require explicit approval before activating.
 - Elevated overrides mandate an explanation (minimum 5 characters) and write immutable records to `audit_events`.
 
+## 2026-08-19 — Prompts 03–11: Integrated operating-chain MVP
+
+- Implemented the application shell and active-release command center across the connected Customer → Project → Job → Release → Revision → Panel Mark → Work Step → QC → Pallet → Shipment chain.
+- Added release intake and revision control, controlled documents and packets, shop-floor scanning and movement history, production planning and first-off controls, inventory and purchasing, QC and remakes, palletizing and shipping, reports and exports, RBAC administration, background jobs, and backup/restore utilities.
+- Kept accounting, payroll, tax, and banking outside the system boundary.
+- Classified the result as an integrated operational MVP. Feature presence does not by itself establish launch readiness; hosted verification, environment configuration, operational acceptance, recovery rehearsal, and production data migration remain separate gates.
+
 ## 2026-08-22 — Authenticated release-package intake boundary
 
 - Browser intake accepts authenticated ZIP or PDF packages up to 10 MB and preserves both the original package and extracted files through the repository-owned FileStore.
 - ZIP packages are the production-ready path for publishing when they contain a CSV panel takeoff; the system no longer fabricates panel marks when no takeoff data is present.
 - Larger release packages require a future resumable direct-to-object-storage design and are not represented as supported by the current UI.
+
+## 2026-08-22 — Stabilization and automated acceptance boundary
+
+- Updated the framework and production dependency graph until the production audit reported no known vulnerabilities.
+- Expanded the hosted quality gate to provision PostgreSQL and MinIO and run formatting, linting, strict type checking, migrations, seed verification, 60 unit tests, database integration tests, a production build, and 13 Chromium workflow tests.
+- Replaced committed development authentication defaults and browser-test password fallbacks with generated local credentials and ephemeral masked CI credentials.
+- Project status is "integrated MVP approaching internal pilot," not production-ready. A green repository quality gate does not replace deployment verification, production configuration review, backup/restore rehearsal, performance validation, or user acceptance in the target operating environment.
