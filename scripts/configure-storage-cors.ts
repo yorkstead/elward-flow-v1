@@ -14,6 +14,25 @@ async function main() {
   }
   const applicationOrigin = new URL(environment.APP_URL).origin
   const allowedOrigins = [applicationOrigin]
+  const corsRule = {
+    AllowedOrigins: allowedOrigins,
+    AllowedMethods: ['PUT'],
+    AllowedHeaders: ['content-type', 'x-amz-meta-sha256'],
+    ExposeHeaders: ['etag'],
+    MaxAgeSeconds: 3600,
+  }
+  if (
+    new URL(environment.MINIO_ENDPOINT).hostname.endsWith(
+      '.r2.cloudflarestorage.com',
+    )
+  ) {
+    console.error(
+      'Cloudflare R2 does not implement PutBucketCors through its S3-compatible API. Configure this rule in R2 > bucket > Settings > CORS Policy:',
+    )
+    console.error(JSON.stringify([corsRule], null, 2))
+    process.exitCode = 1
+    return
+  }
   const client = new S3Client({
     endpoint: environment.MINIO_ENDPOINT,
     region: environment.MINIO_REGION,
@@ -28,15 +47,7 @@ async function main() {
     new PutBucketCorsCommand({
       Bucket: environment.MINIO_BUCKET,
       CORSConfiguration: {
-        CORSRules: [
-          {
-            AllowedOrigins: allowedOrigins,
-            AllowedMethods: ['PUT'],
-            AllowedHeaders: ['content-type'],
-            ExposeHeaders: ['etag'],
-            MaxAgeSeconds: 3600,
-          },
-        ],
+        CORSRules: [corsRule],
       },
     }),
   )

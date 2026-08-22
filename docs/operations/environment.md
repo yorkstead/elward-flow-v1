@@ -52,12 +52,28 @@ continues to use MinIO. Preview object storage remains intentionally separate
 from production and must not point at the production bucket.
 
 Browser uploads above the Vercel request-body ceiling use short-lived presigned
-`PUT` requests to the private bucket. Configure bucket CORS after storage setup:
+`PUT` requests to the private bucket. Cloudflare R2 does not implement the S3
+`PutBucketCors` operation. Configure the production bucket in Cloudflare under
+**R2 > elward-flow-production > Settings > CORS Policy** with this rule:
 
-```powershell
-bun run storage:cors
+```json
+[
+  {
+    "AllowedOrigins": ["https://elward-flow.4twenty.dev"],
+    "AllowedMethods": ["PUT"],
+    "AllowedHeaders": ["content-type", "x-amz-meta-sha256"],
+    "ExposeHeaders": ["etag"],
+    "MaxAgeSeconds": 3600
+  }
+]
 ```
 
-Production permits only the exact `APP_URL` origin, the `PUT` method, and the
-`content-type` request header. The signed URL carries the SHA-256 metadata;
-public bucket access is not required and must remain disabled.
+Add a preview origin only when that environment uses a separate non-production
+bucket. `bun run storage:cors` remains available for S3-compatible providers
+that support `PutBucketCors`; for R2 it prints the required rule and exits
+without claiming a change.
+
+Production permits only the exact production origin, the `PUT` method, and the
+`content-type` and `x-amz-meta-sha256` request headers. The signed metadata
+header carries the SHA-256 digest. Public bucket access is not required and
+must remain disabled.
