@@ -28,8 +28,9 @@ export function ControlledDocumentsList({
 }: ControlledDocumentsListProps) {
   return (
     <div
+      id="controlled-documents"
       aria-label={`Controlled Documents for Release ${jobNumber}-${releaseNumber}`}
-      className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5"
+      className="scroll-mt-4 space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-xs sm:p-5"
     >
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
         <div>

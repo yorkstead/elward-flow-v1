@@ -111,3 +111,4 @@ belong in an ADR under `docs/adr/`.
 
 - Navigation and download actions render as links styled as buttons rather than buttons nested inside anchors.
 - This preserves native link behavior and keyboard accessibility while avoiding redundant component event handling on release-table actions.
+- The command-center Drawings action navigates directly to the current release's controlled-document section. It does not use a blocking browser dialog or imply a separate drawing view that does not exist.

@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import {
   QrCode,
   CheckCircle,
@@ -68,15 +68,13 @@ export function QuickActionsToolbar({
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
         <Link
           href={`/scan?job=${jobNumber}&release=${releaseNumber}`}
-          className="w-full"
+          className={buttonVariants({
+            className:
+              'flex h-11 w-full items-center justify-center gap-2 bg-blue-600 text-xs font-bold text-white shadow-xs hover:bg-blue-700',
+          })}
         >
-          <Button
-            variant="default"
-            className="flex h-11 w-full items-center justify-center gap-2 bg-blue-600 text-xs font-bold text-white shadow-xs hover:bg-blue-700"
-          >
-            <QrCode className="h-4 w-4" />
-            Scan
-          </Button>
+          <QrCode className="h-4 w-4" />
+          Scan
         </Link>
 
         {canProduce && (
@@ -112,14 +110,17 @@ export function QuickActionsToolbar({
           Report Issue
         </Button>
 
-        <Button
-          variant="outline"
-          onClick={() => alert(`Opening Current Approved Drawings`)}
-          className="flex h-11 w-full items-center justify-center gap-1.5 border-slate-200 text-xs font-semibold hover:bg-slate-50"
+        <a
+          href="#controlled-documents"
+          className={buttonVariants({
+            variant: 'outline',
+            className:
+              'flex h-11 w-full items-center justify-center gap-1.5 border-slate-200 text-xs font-semibold hover:bg-slate-50',
+          })}
         >
           <FileText className="h-4 w-4 text-blue-600" />
           Drawings
-        </Button>
+        </a>
 
         <Button
           variant="outline"
