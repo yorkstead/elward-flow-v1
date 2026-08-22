@@ -16,6 +16,7 @@ import {
 interface QuickActionsToolbarProps {
   jobNumber: string
   releaseNumber: number
+  releaseRevisionId: string | null
   userRoles: string[]
   isAdmin?: boolean
 }
@@ -23,6 +24,7 @@ interface QuickActionsToolbarProps {
 export function QuickActionsToolbar({
   jobNumber,
   releaseNumber,
+  releaseRevisionId,
   userRoles,
   isAdmin = false,
 }: QuickActionsToolbarProps) {
@@ -122,14 +124,22 @@ export function QuickActionsToolbar({
           Drawings
         </a>
 
-        <Button
-          variant="outline"
-          onClick={() => alert(`Opening CNC Files & Layouts`)}
-          className="flex h-11 w-full items-center justify-center gap-1.5 border-slate-200 text-xs font-semibold hover:bg-slate-50"
+        <a
+          href={
+            releaseRevisionId
+              ? `/api/releases/${releaseRevisionId}/packets/cnc?format=zip`
+              : undefined
+          }
+          aria-disabled={!releaseRevisionId}
+          className={buttonVariants({
+            variant: 'outline',
+            className:
+              'flex h-11 w-full items-center justify-center gap-1.5 border-slate-200 text-xs font-semibold hover:bg-slate-50 aria-disabled:pointer-events-none aria-disabled:opacity-50',
+          })}
         >
           <Binary className="h-4 w-4 text-purple-600" />
           CNC Files
-        </Button>
+        </a>
 
         {canHold && (
           <Button

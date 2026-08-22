@@ -361,6 +361,7 @@ export default async function DashboardPage(props: PageProps) {
         releaseNumber={
           releaseRecord ? releaseRecord.releaseNumber : targetReleaseNumber
         }
+        releaseRevisionId={revisionRecord?.id ?? null}
         userRoles={session.user.roles}
         isAdmin={session.user.isAdmin}
       />

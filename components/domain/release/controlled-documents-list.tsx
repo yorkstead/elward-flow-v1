@@ -45,7 +45,7 @@ export function ControlledDocumentsList({
           <a
             href={
               releaseRevisionId
-                ? `/api/releases/${releaseRevisionId}/packets/complete?format=pdf`
+                ? `/api/releases/${releaseRevisionId}/packets/cnc?format=pdf`
                 : undefined
             }
             target="_blank"
@@ -59,7 +59,7 @@ export function ControlledDocumentsList({
             })}
           >
             <FileText className="h-3.5 w-3.5 text-blue-600" />
-            Merged drawing PDF
+            Drawing PDFs
           </a>
           <a
             href={
@@ -78,7 +78,7 @@ export function ControlledDocumentsList({
             })}
           >
             <FileArchive className="h-3.5 w-3.5" />
-            Complete packet ZIP
+            All release files ZIP
           </a>
         </div>
       </div>

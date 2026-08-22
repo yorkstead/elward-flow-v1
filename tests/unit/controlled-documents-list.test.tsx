@@ -23,8 +23,9 @@ describe('ControlledDocumentsList', () => {
       />,
     )
 
-    expect(html).toContain('Merged drawing PDF')
-    expect(html).toContain('Complete packet ZIP')
+    expect(html).toContain('Drawing PDFs')
+    expect(html).toContain('All release files ZIP')
+    expect(html).toContain('/packets/cnc?format=pdf')
     expect(html).toContain('href="/api/files/stored-file-1"')
     expect(html).toContain('aria-label="Download Panel A.pdf"')
     expect(html).not.toMatch(/<a[^>]*>\s*<button/)

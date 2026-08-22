@@ -113,3 +113,4 @@ belong in an ADR under `docs/adr/`.
 - This preserves native link behavior and keyboard accessibility while avoiding redundant component event handling on release-table actions.
 - The command-center Drawings action navigates directly to the current release's controlled-document section. It does not use a blocking browser dialog or imply a separate drawing view that does not exist.
 - Controlled packet links use the current release revision's internal identifier, and individual document actions name and download the exact stored file. Packet resolution is scoped to the signed-in organization, and packet contents are selected by the exact release revision rather than a reusable label such as `A`.
+- Drawing PDFs generate the CNC drawing packet and exclude general release paperwork. Native CNC sources and layouts that cannot be merged into a PDF are delivered by the CNC Files ZIP; the all-release ZIP remains available separately.
