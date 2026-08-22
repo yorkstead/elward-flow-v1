@@ -78,3 +78,9 @@ belong in an ADR under `docs/adr/`.
 - `Shop` is the only production facility. Release publishing and downstream manufacturing execution must resolve a site explicitly marked for production and must never fall back to an arbitrary first site or an organization identifier.
 - `Office` is a non-production site. Office users may perform authorized planning, administration, reporting, and other non-manufacturing work, but Office cannot be selected as the facility that executes production.
 - Street addresses and any finer department or workstation assignments remain unverified and are not invented here.
+
+## 2026-08-22 — Application launch and mobile viewport behavior
+
+- The initial App Router loading state uses the authentic local Elward lockup and Elward Flow's dark industrial presentation. It communicates workspace preparation without implying that operational data is ready before authentication and server data resolve.
+- Phone layouts constrain the document and application shell to the viewport so the primary page moves vertically only. Wide operational tables may retain contained horizontal scrolling inside their own labeled data region where collapsing columns would obscure quantities, revisions, or status.
+- The mobile header reduces the global search control to its accessible icon action and hides the Flow suffix at narrow breakpoints while preserving the authentic Elward logo proportions.

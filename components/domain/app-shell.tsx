@@ -70,7 +70,7 @@ export function AppShell({
   }
 
   return (
-    <div className="bg-flow-workspace text-foreground selection:bg-brand-orange selection:text-brand-navy flex min-h-screen flex-col antialiased">
+    <div className="bg-flow-workspace text-foreground selection:bg-brand-orange selection:text-brand-navy flex min-h-dvh w-full max-w-full flex-col overflow-x-hidden antialiased">
       <NavHeader
         user={user}
         siteName={siteName}
@@ -79,7 +79,7 @@ export function AppShell({
         onSignOut={onSignOut}
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex min-w-0 flex-1 overflow-hidden">
         {/* Desktop / Tablet Sidebar */}
         <aside className="flow-panel-grid border-sidebar-border bg-sidebar text-sidebar-foreground hidden w-56 shrink-0 flex-col space-y-1 overflow-y-auto border-r p-3 md:flex lg:w-64">
           <div className="font-heading px-3 py-2 text-[11px] font-bold tracking-[0.16em] text-slate-300 uppercase">
@@ -154,7 +154,9 @@ export function AppShell({
         )}
 
         {/* Main Content Workspace */}
-        <main className="min-w-0 flex-1 overflow-y-auto">{children}</main>
+        <main className="w-full max-w-full min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
+          {children}
+        </main>
       </div>
 
       {/* Mobile bottom quick bar */}

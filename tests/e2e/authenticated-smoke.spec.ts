@@ -14,12 +14,24 @@ test('redirects unauthorized users and authenticates the local administrator', a
   await page.getByRole('button', { name: 'Sign in' }).click()
   await expect(page).toHaveURL(/\/dashboard/)
   await expect(
-    page.getByRole('heading', {
-      name: 'Tempe Gateway Commercial Center Phase II',
-    }),
+    page.getByText('Active Command Center • Pinned Release'),
   ).toBeVisible()
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([])
 
+  await page.setViewportSize({ width: 360, height: 800 })
+  const viewportWidth = await page.evaluate(() => ({
+    client: document.documentElement.clientWidth,
+    scroll: document.documentElement.scrollWidth,
+  }))
+  expect(viewportWidth.scroll).toBe(viewportWidth.client)
+  await expect(
+    page.getByRole('button', { name: 'Search records' }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Toggle Navigation Menu' }),
+  ).toBeVisible()
+
+  await page.setViewportSize({ width: 1280, height: 800 })
   await page.getByRole('link', { name: 'Storage Test' }).click()
   await page.getByLabel('Fictional PDF').setInputFiles({
     name: 'fictional-foundation-test.pdf',

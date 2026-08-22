@@ -54,7 +54,7 @@ export function NavHeader({
     <>
       <header className="border-sidebar-border bg-flow-chrome/98 sticky top-0 z-40 flex min-h-16 w-full items-center justify-between gap-3 border-b px-4 py-2.5 text-white shadow-md backdrop-blur-md">
         {/* Left branding & mobile menu toggle */}
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-3">
           {onToggleMobileMenu && (
             <Button
               variant="ghost"
@@ -85,16 +85,18 @@ export function NavHeader({
         </div>
 
         {/* Global Search trigger */}
-        <div className="mx-2 max-w-md flex-1">
+        <div className="mx-0 min-w-0 shrink-0 sm:mx-2 sm:max-w-md sm:flex-1">
           <Button
             variant="outline"
             aria-label="Search records"
             onClick={() => setSearchOpen(true)}
-            className="border-sidebar-border bg-sidebar-accent hover:bg-brand-navy h-10 w-full justify-between px-3 text-xs text-slate-300 hover:text-white"
+            className="border-sidebar-border bg-sidebar-accent hover:bg-brand-navy h-10 w-10 justify-center px-0 text-xs text-slate-300 hover:text-white sm:w-full sm:justify-between sm:px-3"
           >
             <span className="flex items-center gap-2 truncate">
               <Search className="text-brand-orange h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">Search job, release, mark, PO...</span>
+              <span className="hidden truncate sm:inline">
+                Search job, release, mark, PO...
+              </span>
             </span>
             <kbd className="border-sidebar-border bg-flow-chrome hidden rounded-sm border px-1.5 py-0.5 font-mono text-[10px] text-slate-300 shadow-2xs sm:inline-flex">
               Ctrl+K
@@ -103,7 +105,7 @@ export function NavHeader({
         </div>
 
         {/* Right action status & user profile */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2.5">
           <OfflineStatus />
 
           <div className="hidden flex-col items-end text-right sm:flex">

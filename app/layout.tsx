@@ -50,7 +50,7 @@ export default function RootLayout({
       lang="en"
       className={`${openSans.variable} ${robotoCondensed.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col font-sans">
+      <body className="flex min-h-full w-full max-w-full flex-col overflow-x-hidden font-sans">
         <OfflineStatus />
         {children}
       </body>

@@ -24,11 +24,22 @@ export function ElwardFlowBrand({
           width={1467}
           height={306}
           priority={priority}
-          className={cn('h-auto w-[106px]', compact && 'w-[88px]')}
+          className={cn(
+            'h-auto w-[106px]',
+            compact && 'w-[88px] max-[380px]:w-[72px]',
+          )}
         />
       </span>
-      <span className="h-7 w-px shrink-0 bg-white/25" aria-hidden="true" />
-      <span className="min-w-0 leading-none">
+      <span
+        className={cn(
+          'h-7 w-px shrink-0 bg-white/25',
+          compact && 'max-[420px]:hidden',
+        )}
+        aria-hidden="true"
+      />
+      <span
+        className={cn('min-w-0 leading-none', compact && 'max-[420px]:hidden')}
+      >
         <span className="font-heading block text-lg font-bold tracking-[0.14em] text-white uppercase">
           Flow
         </span>
