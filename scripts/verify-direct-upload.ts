@@ -24,6 +24,12 @@ async function main() {
       sha256: digest,
       expiresInSeconds: 300,
     })
+    if (upload.headers['x-amz-meta-sha256'] !== digest)
+      throw new Error('Direct upload authorization omitted SHA-256 metadata')
+    const signedHeaders =
+      new URL(upload.url).searchParams.get('X-Amz-SignedHeaders') ?? ''
+    if (!signedHeaders.split(';').includes('x-amz-meta-sha256'))
+      throw new Error('Direct upload SHA-256 metadata header was not signed')
     const response = await fetch(upload.url, {
       method: 'PUT',
       headers: upload.headers,

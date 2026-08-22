@@ -114,11 +114,15 @@ export class MinioFileStore implements FileStore {
     })
     const url = await getSignedUrl(this.client, command, {
       expiresIn: input.expiresInSeconds,
+      // Keep integrity metadata in a signed request header. Some S3-compatible
+      // providers do not persist x-amz-meta-* values hoisted into the query.
+      unhoistableHeaders: new Set(['x-amz-meta-sha256']),
     })
     return {
       url,
       headers: {
         'content-type': input.contentType,
+        'x-amz-meta-sha256': input.sha256,
       },
     }
   }
