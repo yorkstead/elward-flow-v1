@@ -95,3 +95,10 @@ belong in an ADR under `docs/adr/`.
 - Generated `ErrorLog` CSV companions are retained with the immutable upload but classified as review artifacts and excluded from mark parsing. Only confidently classified takeoff CSVs can supply panel marks.
 - When an archive contains full and CLEAN schedules for the same parenthesized finish label, intake uses the full schedule when it contains marks and otherwise falls back to its validated CLEAN companion. It does not double-count both representations.
 - When multiple finish schedules restart mark numbering, intake prefixes marks with the normalized finish label (for example, `JADE-1` and `PETROL-1`) so identifiers remain unambiguous throughout scanning and production.
+
+## 2026-08-22 — Swisspearl release document baseline
+
+- A standard Swisspearl release requires cut drawings only. Panels are normally cut, sanded, sealed, and palletized without an assembly operation.
+- Assembly drawings remain optional and are included when clip installation or another actual assembly step applies.
+- Accessory and hardware schedules remain optional because rail and installation-hardware information is included inconsistently by release.
+- Architectural elevations and key plans remain supported document categories but are not mandatory for Swisspearl release approval.

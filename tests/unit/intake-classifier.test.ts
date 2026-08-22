@@ -69,13 +69,10 @@ describe('DocumentClassifier & Safe ZIP Extraction', () => {
       expect(expected).toContain('assembly_drawing')
     })
 
-    it('requires accessory rivet schedules for Swisspearl and Trespa packages', () => {
+    it('requires only cut drawings for standard Swisspearl packages', () => {
       const expected =
         DocumentClassifier.getExpectedCategoriesForMaterial('Swisspearl')
-      expect(expected).toContain('cut_drawing')
-      expect(expected).toContain('assembly_drawing')
-      expect(expected).toContain('accessory_list')
-      expect(expected).not.toContain('extrusion_cut_list')
+      expect(expected).toEqual(['cut_drawing'])
     })
 
     it('detects missing extrusion cut list in ACM release', () => {

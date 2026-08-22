@@ -267,12 +267,11 @@ export class DocumentClassifier {
   ): DocumentCategoryCode[] {
     const family = materialFamily.trim().toUpperCase()
 
-    if (
-      family === 'SWISSPEARL' ||
-      family === 'TRESPA' ||
-      family === 'HPL' ||
-      family === 'FIBER_CEMENT'
-    ) {
+    if (family === 'SWISSPEARL') {
+      return ['cut_drawing']
+    }
+
+    if (family === 'TRESPA' || family === 'HPL' || family === 'FIBER_CEMENT') {
       return ['cut_drawing', 'assembly_drawing', 'accessory_list', 'elevation']
     }
 
