@@ -7,10 +7,9 @@ describe('AppLaunchScreen', () => {
   it('provides a branded and accessible initial loading state', () => {
     const markup = renderToStaticMarkup(<AppLaunchScreen />)
 
-    expect(markup).toContain('Preparing your workspace')
     expect(markup).toContain('aria-label="Elward Flow is loading"')
-    expect(markup).toContain('aria-label="Elward Flow"')
-    expect(markup).toContain('elward-logo-primary.png')
+    expect(markup).toContain('elward-symbol-orange.png')
+    expect(markup).toContain('animate-spin')
   })
 
   it('keeps a hard-launch visible long enough to feel intentional', () => {

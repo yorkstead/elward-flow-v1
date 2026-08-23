@@ -84,6 +84,7 @@ belong in an ADR under `docs/adr/`.
 - The initial App Router loading state uses the authentic local Elward lockup and Elward Flow's dark industrial presentation. It communicates workspace preparation without implying that operational data is ready before authentication and server data resolve.
 - Phone layouts constrain the document and application shell to the viewport so the primary page moves vertically only. Wide operational tables may retain contained horizontal scrolling inside their own labeled data region where collapsing columns would obscure quantities, revisions, or status.
 - The mobile header reduces the global search control to its accessible icon action and hides the Flow suffix at narrow breakpoints while preserving the authentic Elward logo proportions.
+- Browser, installed-app, Apple touch, and ICO surfaces use the authentic orange Elward symbol extracted from the approved primary logo on Elward blue. The brief launch state uses that same orange symbol without a colored tile, surrounded by a lightweight progress ring.
 
 ## 2026-08-22 — Panel takeoff CSV compatibility
 
