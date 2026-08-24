@@ -138,7 +138,7 @@ export class IntakeService {
       throw new Error('Stored release package metadata does not match upload.')
 
     // 2. Infer Job Number and Release Number from filename
-    let inferredJobNumber = manualJobNumber || '54120'
+    let inferredJobNumber = manualJobNumber || '25036'
     let inferredReleaseNumber = manualReleaseNumber || 1
     let inferredRevisionLabel = 'A'
 

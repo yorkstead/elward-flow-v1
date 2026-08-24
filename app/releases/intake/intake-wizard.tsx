@@ -84,7 +84,7 @@ export function IntakeWizard({
   const [error, setError] = React.useState<string | null>(null)
 
   // Form & Intake State
-  const [manualJobNumber, setManualJobNumber] = React.useState('54120')
+  const [manualJobNumber, setManualJobNumber] = React.useState('25036')
   const [manualReleaseNumber, setManualReleaseNumber] = React.useState(1)
   const [materialFamily, setMaterialFamily] = React.useState('ACM')
   const [revisionLabel, setRevisionLabel] = React.useState('A')
@@ -363,7 +363,7 @@ export function IntakeWizard({
                 value={manualJobNumber}
                 maxLength={5}
                 onChange={(e) => setManualJobNumber(e.target.value)}
-                placeholder="54120"
+                placeholder="25036"
                 className="font-mono text-sm"
               />
             </div>

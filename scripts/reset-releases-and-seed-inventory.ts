@@ -3,6 +3,8 @@ import { db, pool } from '@/db'
 import {
   organizations,
   users,
+  customers,
+  projects,
   productionJobs,
   releases,
   releaseRevisions,
@@ -99,15 +101,72 @@ async function resetReleasesAndSeedInventory() {
     '✓ Release test data cleared successfully. Releases table is now clean and ready for re-import.',
   )
 
-  // 3. Ensure Job 54120 exists for reimporting
-  const existingJob = await db
+  // 3. Clear legacy Job 54120 and establish Job 25036 for intake
+  await db.delete(productionJobs).where(eq(productionJobs.jobNumber, '54120'))
+
+  console.log('✓ Legacy Job 54120 removed completely.')
+
+  let [customer] = await db
     .select()
-    .from(productionJobs)
-    .where(eq(productionJobs.jobNumber, '54120'))
+    .from(customers)
+    .where(eq(customers.organizationId, organization.id))
     .limit(1)
 
+  if (!customer) {
+    ;[customer] = await db
+      .insert(customers)
+      .values({
+        organizationId: organization.id,
+        name: 'Tempe Gateway Commercial Partners',
+        code: 'TEMPE',
+        contactName: 'Jane Doe',
+        contactEmail: 'jane.doe@example.test',
+        contactPhone: '555-0199',
+      })
+      .returning()
+  }
+
+  let [project] = await db
+    .select()
+    .from(projects)
+    .where(eq(projects.organizationId, organization.id))
+    .limit(1)
+
+  if (!project) {
+    ;[project] = await db
+      .insert(projects)
+      .values({
+        organizationId: organization.id,
+        customerId: customer.id,
+        name: 'Tempe Gateway Commercial Center Phase II',
+        code: 'TG-PH2',
+        location: 'Tempe, AZ',
+      })
+      .returning()
+  }
+
+  const [job25036] = await db
+    .insert(productionJobs)
+    .values({
+      organizationId: organization.id,
+      customerId: customer.id,
+      projectId: project.id,
+      jobNumber: '25036',
+      name: 'Tempe Gateway Exterior Cladding',
+      status: 'Active',
+    })
+    .onConflictDoUpdate({
+      target: [productionJobs.organizationId, productionJobs.jobNumber],
+      set: {
+        name: 'Tempe Gateway Exterior Cladding',
+        status: 'Active',
+        updatedAt: new Date(),
+      },
+    })
+    .returning()
+
   console.log(
-    `✓ Production Job 54120 is present (${existingJob.length > 0 ? 'Verified' : 'Ready'}).`,
+    `✓ Production Job 25036 is established and ready for fresh release intake (${job25036.jobNumber}).`,
   )
 
   // 4. Seed Inventory Locations
@@ -342,7 +401,7 @@ async function resetReleasesAndSeedInventory() {
       actorId: adminUser.id,
       actingRole: 'System Administrator',
       reason: 'Physical inventory baseline',
-      notes: 'Initial warehouse stock for Job 54120 Charcoal Grey panels',
+      notes: 'Initial warehouse stock for Job 25036 Charcoal Grey panels',
     },
     {
       organizationId: organization.id,
@@ -356,7 +415,7 @@ async function resetReleasesAndSeedInventory() {
       actorId: adminUser.id,
       actingRole: 'System Administrator',
       reason: 'Physical inventory baseline',
-      notes: 'Initial warehouse stock for Job 54120 Bright Silver panels',
+      notes: 'Initial warehouse stock for Job 25036 Bright Silver panels',
     },
     {
       organizationId: organization.id,
@@ -446,7 +505,7 @@ async function resetReleasesAndSeedInventory() {
 
   // 7. Reset & Seed Purchase Orders
   console.log(
-    '5. Seeding Purchase Orders aligned with Job 54120 Release Intake...',
+    '5. Seeding Purchase Orders aligned with Job 25036 Release Intake...',
   )
   await db.delete(purchaseOrderLines)
   await db
@@ -463,7 +522,7 @@ async function resetReleasesAndSeedInventory() {
       status: 'Issued',
       orderDate: new Date(Date.now() - 86400000 * 2), // 2 days ago
       expectedDate: new Date(Date.now() + 86400000 * 3), // in 3 days
-      notes: 'Material for Job 54120 Releases 1 & 2 ACM panel routing',
+      notes: 'Material for Job 25036 Releases 1 & 2 ACM panel routing',
     })
     .returning()
 

@@ -30,8 +30,8 @@ export default async function InventoryPage() {
     isAdmin: session.user.isAdmin,
   }
 
-  // 1. Fetch default Release 54120-1
-  const [targetRelease] = await db
+  // 1. Fetch default Release (Job 25036 or first available release)
+  let [targetRelease] = await db
     .select({
       id: releases.id,
       releaseNumber: releases.releaseNumber,
@@ -39,13 +39,27 @@ export default async function InventoryPage() {
     })
     .from(releases)
     .innerJoin(productionJobs, eq(releases.jobId, productionJobs.id))
-    .where(eq(productionJobs.jobNumber, '54120'))
+    .where(eq(productionJobs.jobNumber, '25036'))
     .limit(1)
+
+  if (!targetRelease) {
+    const [firstRel] = await db
+      .select({
+        id: releases.id,
+        releaseNumber: releases.releaseNumber,
+        jobNumber: productionJobs.jobNumber,
+      })
+      .from(releases)
+      .innerJoin(productionJobs, eq(releases.jobId, productionJobs.id))
+      .orderBy(desc(releases.createdAt))
+      .limit(1)
+    targetRelease = firstRel
+  }
 
   const activeReleaseId = targetRelease?.id || ''
   const activeReleaseKey = targetRelease
     ? `${targetRelease.jobNumber}-${targetRelease.releaseNumber}`
-    : '54120-1'
+    : '25036-1'
 
   // 2. Fetch Live Stock Summary
   const stockItems = await InventoryService.getStockSummary(context)

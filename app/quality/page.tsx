@@ -28,7 +28,7 @@ export default async function QualityPage() {
     isAdmin: session.user.isAdmin,
   }
 
-  // 1. Fetch default Release (Job 54120 or first available release)
+  // 1. Fetch default Release (Job 25036 or first available release)
   let [targetRelease] = await db
     .select({
       id: releases.id,
@@ -37,7 +37,7 @@ export default async function QualityPage() {
     })
     .from(releases)
     .innerJoin(productionJobs, eq(releases.jobId, productionJobs.id))
-    .where(eq(productionJobs.jobNumber, '54120'))
+    .where(eq(productionJobs.jobNumber, '25036'))
     .limit(1)
 
   if (!targetRelease) {
@@ -57,7 +57,7 @@ export default async function QualityPage() {
   const activeReleaseId = targetRelease?.id || ''
   const activeReleaseKey = targetRelease
     ? `${targetRelease.jobNumber}-${targetRelease.releaseNumber}`
-    : '54120-1'
+    : '25036-1'
 
   // 2. Fetch Live Inspections
   const inspections = await QualityService.getInspections(context)
