@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { eq, ne, and } from 'drizzle-orm'
 import { db, pool } from '@/db'
 import {
   organizations,
@@ -101,10 +101,17 @@ async function resetReleasesAndSeedInventory() {
     '✓ Release test data cleared successfully. Releases table is now clean and ready for re-import.',
   )
 
-  // 3. Clear legacy Job 54120 and establish Job 25036 for intake
-  await db.delete(productionJobs).where(eq(productionJobs.jobNumber, '54120'))
+  // 3. Clear legacy jobs (54120, 59001, etc.) and establish Job 25036 for intake
+  await db
+    .delete(productionJobs)
+    .where(
+      and(
+        eq(productionJobs.organizationId, organization.id),
+        ne(productionJobs.jobNumber, '25036'),
+      ),
+    )
 
-  console.log('✓ Legacy Job 54120 removed completely.')
+  console.log('✓ Legacy jobs (54120, 59001, etc.) removed completely.')
 
   let [customer] = await db
     .select()
