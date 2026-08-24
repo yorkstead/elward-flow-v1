@@ -13,6 +13,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "seed": "bun scripts/seed.ts",
+    "db:reset-releases": "bun scripts/reset-releases-and-seed-inventory.ts",
     "admin:create": "bun scripts/create-admin.ts",
     "worker": "bun worker/index.ts",
     "worker:smoke": "bun scripts/enqueue-worker-smoke.ts",
