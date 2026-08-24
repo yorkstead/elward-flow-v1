@@ -52,11 +52,19 @@ async function resetReleasesAndSeedInventory() {
 
   console.log(`Found organization: ${organization.name} (${organization.id})`)
 
-  // 2. Clear all release-specific test records
+  // 2. Clear all release-specific test records and ALL jobs
   console.log(
-    '1. Clearing shipments, pallets, quality records, movements, operations, documents, and releases...',
+    '1. Clearing shipments, pallets, quality records, movements, operations, documents, releases, and ALL jobs...',
   )
 
+  await db
+    .delete(purchaseOrderLines)
+  await db
+    .delete(purchaseOrders)
+    .where(eq(purchaseOrders.organizationId, organization.id))
+  await db
+    .delete(inventoryTransactions)
+    .where(eq(inventoryTransactions.organizationId, organization.id))
   await db
     .delete(shipmentPallets)
     .where(eq(shipmentPallets.organizationId, organization.id))
@@ -96,84 +104,12 @@ async function resetReleasesAndSeedInventory() {
     .delete(releaseRevisions)
     .where(eq(releaseRevisions.organizationId, organization.id))
   await db.delete(releases).where(eq(releases.organizationId, organization.id))
-
-  console.log(
-    '✓ Release test data cleared successfully. Releases table is now clean and ready for re-import.',
-  )
-
-  // 3. Clear legacy jobs (54120, 59001, etc.) and establish Job 25036 for intake
   await db
     .delete(productionJobs)
-    .where(
-      and(
-        eq(productionJobs.organizationId, organization.id),
-        ne(productionJobs.jobNumber, '25036'),
-      ),
-    )
-
-  console.log('✓ Legacy jobs (54120, 59001, etc.) removed completely.')
-
-  let [customer] = await db
-    .select()
-    .from(customers)
-    .where(eq(customers.organizationId, organization.id))
-    .limit(1)
-
-  if (!customer) {
-    ;[customer] = await db
-      .insert(customers)
-      .values({
-        organizationId: organization.id,
-        name: 'Tempe Gateway Commercial Partners',
-        code: 'TEMPE',
-        contactName: 'Jane Doe',
-        contactEmail: 'jane.doe@example.test',
-        contactPhone: '555-0199',
-      })
-      .returning()
-  }
-
-  let [project] = await db
-    .select()
-    .from(projects)
-    .where(eq(projects.organizationId, organization.id))
-    .limit(1)
-
-  if (!project) {
-    ;[project] = await db
-      .insert(projects)
-      .values({
-        organizationId: organization.id,
-        customerId: customer.id,
-        name: 'Tempe Gateway Commercial Center Phase II',
-        code: 'TG-PH2',
-        location: 'Tempe, AZ',
-      })
-      .returning()
-  }
-
-  const [job25036] = await db
-    .insert(productionJobs)
-    .values({
-      organizationId: organization.id,
-      customerId: customer.id,
-      projectId: project.id,
-      jobNumber: '25036',
-      name: 'Tempe Gateway Exterior Cladding',
-      status: 'Active',
-    })
-    .onConflictDoUpdate({
-      target: [productionJobs.organizationId, productionJobs.jobNumber],
-      set: {
-        name: 'Tempe Gateway Exterior Cladding',
-        status: 'Active',
-        updatedAt: new Date(),
-      },
-    })
-    .returning()
+    .where(eq(productionJobs.organizationId, organization.id))
 
   console.log(
-    `✓ Production Job 25036 is established and ready for fresh release intake (${job25036.jobNumber}).`,
+    '✓ All jobs, releases, and test data cleared completely. System is a clean slate ready for fresh release intake.',
   )
 
   // 4. Seed Inventory Locations
