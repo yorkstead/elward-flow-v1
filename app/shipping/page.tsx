@@ -52,7 +52,7 @@ export default async function ShippingPage() {
       timezone="America/Denver"
       onSignOut={handleSignOut}
     >
-      <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto w-full max-w-[1920px] space-y-6 p-4 sm:p-6 lg:p-8">
         <ShippingDashboardView
           initialShipments={initialShipments}
           stagedPallets={stagedPallets}

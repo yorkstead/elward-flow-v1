@@ -202,7 +202,7 @@ export function PanelMarksTable({
                 <td className="px-4 py-3 font-mono font-bold text-slate-900">
                   {row.mark}
                 </td>
-                <td className="max-w-xs truncate px-4 py-3 text-slate-600">
+                <td className="max-w-md truncate px-4 py-3 text-slate-600 xl:max-w-none">
                   {row.description || '—'}
                 </td>
                 <td className="px-4 py-3 text-center font-mono font-bold text-slate-900">

@@ -335,7 +335,7 @@ export default async function DashboardPage(props: PageProps) {
   const totalPanels = marks.reduce((sum, m) => sum + m.quantity, 0)
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
+    <div className="mx-auto w-full max-w-[1920px] space-y-6 p-4 sm:p-6 lg:p-8">
       {/* 1. Primary Header Banner */}
       <ReleaseHeaderBanner
         jobNumber={jobRecord.jobNumber}
