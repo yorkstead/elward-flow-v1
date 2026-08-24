@@ -18,6 +18,7 @@
     "worker:smoke": "bun scripts/enqueue-worker-smoke.ts",
     "storage:cors": "bun scripts/configure-storage-cors.ts",
     "storage:verify-direct-upload": "bun scripts/verify-direct-upload.ts",
+    "env:verify": "bun scripts/verify-environment.ts",
     "backup": "bun scripts/backup.ts",
     "restore:verify": "bun scripts/verify-restore.ts",
     "test": "vitest run tests/unit",

@@ -43,6 +43,7 @@ import {
   MovementLedgerView,
   type MovementLedgerItem,
 } from './movement-ledger-view'
+import { playAudioFeedback, triggerHaptic } from './scanner-feedback'
 
 interface WorkstationItem {
   id: string
@@ -100,6 +101,11 @@ export function ScanStation({
   // Blocking Warning Modal for Obsolete Revisions
   const [blockingModalOpen, setBlockingModalOpen] = React.useState(false)
 
+  // Camera and Hardware Scanner Refs & State
+  const videoRef = React.useRef<HTMLVideoElement | null>(null)
+  const mediaStreamRef = React.useRef<MediaStream | null>(null)
+  const [cameraError, setCameraError] = React.useState<string | null>(null)
+
   // Workstation lookup
   const currentStation = workstations.find((w) => w.id === activeStationId)
 
@@ -130,15 +136,23 @@ export function ScanStation({
         setScanResult(result)
 
         if (!result.found) {
+          playAudioFeedback('error')
+          triggerHaptic('error')
           setScanError(`No record found matching identifier: "${codeToScan}"`)
           return
         }
 
         // Check for Blocking Obsolete Revision Warning
         if (result.isSuperseded && result.blockingWarning) {
+          playAudioFeedback('warning')
+          triggerHaptic('warning')
           setBlockingModalOpen(true)
           return
         }
+
+        // Standard valid scan acknowledgement
+        playAudioFeedback('scan')
+        triggerHaptic('scan')
 
         // If permitted actions exist and top one is recommended, prepare default action
         if (result.permittedActions.length > 0) {
@@ -157,6 +171,8 @@ export function ScanStation({
           setActionNotes('')
         }
       } catch (err) {
+        playAudioFeedback('error')
+        triggerHaptic('error')
         setScanError(err instanceof Error ? err.message : 'Scan error')
       } finally {
         setScanning(false)
@@ -165,6 +181,111 @@ export function ScanStation({
     },
     [activeStationId],
   )
+
+  // Device Camera Stream & Live Barcode Detection Lifecycle
+  React.useEffect(() => {
+    if (!cameraActive) {
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop())
+        mediaStreamRef.current = null
+      }
+      return
+    }
+
+    let isMounted = true
+    let scanInterval: ReturnType<typeof setInterval> | null = null
+
+    async function startCamera() {
+      setCameraError(null)
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw new Error(
+            'Camera access is not supported on this browser or device.',
+          )
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        })
+        if (!isMounted) {
+          stream.getTracks().forEach((t) => t.stop())
+          return
+        }
+        mediaStreamRef.current = stream
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          await videoRef.current.play()
+        }
+
+        // If native BarcodeDetector API is available (Chrome / Edge / Android / iOS 17+)
+        if ('BarcodeDetector' in window) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const barcodeDetector = new (window as any).BarcodeDetector({
+            formats: [
+              'qr_code',
+              'code_128',
+              'code_39',
+              'ean_13',
+              'ean_8',
+              'data_matrix',
+              'upc_a',
+              'upc_e',
+            ],
+          })
+
+          let isDecoding = false
+          scanInterval = setInterval(async () => {
+            if (
+              isDecoding ||
+              !videoRef.current ||
+              videoRef.current.readyState < 2
+            )
+              return
+            isDecoding = true
+            try {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const barcodes: any[] = await barcodeDetector.detect(
+                videoRef.current,
+              )
+              if (barcodes.length > 0 && barcodes[0]?.rawValue) {
+                const detectedValue = String(barcodes[0].rawValue).trim()
+                if (detectedValue) {
+                  setCameraActive(false)
+                  void handleResolveScan(detectedValue)
+                }
+              }
+            } catch {
+              // Frame decoding skip
+            } finally {
+              isDecoding = false
+            }
+          }, 250)
+        }
+      } catch (err) {
+        if (isMounted) {
+          setCameraError(
+            err instanceof Error
+              ? err.message
+              : 'Unable to access device camera. Please verify camera permissions.',
+          )
+        }
+      }
+    }
+
+    void startCamera()
+
+    return () => {
+      isMounted = false
+      if (scanInterval) clearInterval(scanInterval)
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((t) => t.stop())
+        mediaStreamRef.current = null
+      }
+    }
+  }, [cameraActive, handleResolveScan])
 
   // Online / Offline Listeners
   React.useEffect(() => {
@@ -191,16 +312,17 @@ export function ScanStation({
     }
   }, [])
 
-  // Keyboard Wedge Listener (captures rapid keystrokes ending with Enter)
+  // Keyboard Wedge Listener (captures rapid keystrokes from Zebra / hardware scanners ending with Enter or Tab)
   React.useEffect(() => {
     let buffer = ''
     let lastKeyTime = Date.now()
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if user is intentionally typing into a form input/textarea
+      // Ignore if user is intentionally typing into an editable field (reason / notes input)
       const target = e.target as HTMLElement
       if (
-        target.tagName === 'INPUT' ||
+        (target.tagName === 'INPUT' &&
+          target.getAttribute('type') !== 'search') ||
         target.tagName === 'TEXTAREA' ||
         target.isContentEditable
       ) {
@@ -209,14 +331,16 @@ export function ScanStation({
 
       const now = Date.now()
       if (now - lastKeyTime > 150) {
-        buffer = '' // Reset buffer if typing was slow (human typing vs hardware scanner)
+        buffer = '' // Reset buffer if typing was slow (human typing vs rapid hardware burst)
       }
       lastKeyTime = now
 
-      if (e.key === 'Enter') {
-        if (buffer.trim().length > 1) {
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        // Strip non-printable ASCII control characters (STX, ETX, CR, LF, etc.)
+        const cleaned = buffer.replace(/[\x00-\x1F\x7F]/g, '').trim()
+        if (cleaned.length > 1) {
           e.preventDefault()
-          void handleResolveScan(buffer.trim())
+          void handleResolveScan(cleaned)
           buffer = ''
         }
       } else if (e.key.length === 1) {
@@ -289,6 +413,9 @@ export function ScanStation({
 
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Movement execution failed')
+
+      playAudioFeedback('success')
+      triggerHaptic('success')
 
       setLastActionSuccess(
         `SUCCESS: Recorded ${actionQuantity} pcs of ${scanResult.entity.identifier} -> ${selectedAction.targetStatus} (${actionCondition.toUpperCase()}). Ready for next scan.`,
@@ -444,17 +571,45 @@ export function ScanStation({
               </Button>
             </div>
 
-            {/* Camera Viewfinder (Simulated/Active) */}
+            {/* Camera Viewfinder (Live Stream with Hardware Barcode Detector) */}
             {cameraActive && (
-              <div className="relative my-4 flex h-48 flex-col items-center justify-center rounded-xl border-2 border-dashed border-blue-400 bg-slate-950 text-white">
-                <div className="absolute inset-x-8 top-1/2 h-0.5 animate-pulse bg-red-500 shadow-md" />
-                <Camera className="mb-2 h-8 w-8 text-slate-400" />
-                <p className="text-xs font-semibold text-slate-300">
-                  Align Barcode / QR Code within the guide
-                </p>
-                <p className="mt-1 text-[11px] text-slate-500">
-                  Auto-detect active
-                </p>
+              <div className="relative my-4 overflow-hidden rounded-xl border-2 border-blue-400 bg-black text-white shadow-inner">
+                {cameraError ? (
+                  <div className="flex h-56 flex-col items-center justify-center p-4 text-center">
+                    <AlertTriangle className="mb-2 h-8 w-8 text-amber-400" />
+                    <p className="text-xs font-semibold text-slate-200">
+                      {cameraError}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCameraActive(false)}
+                      className="mt-3 h-8 border-slate-700 bg-slate-800 text-xs text-white hover:bg-slate-700"
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="relative flex h-56 w-full items-center justify-center">
+                    <video
+                      ref={videoRef}
+                      playsInline
+                      autoPlay
+                      muted
+                      className="h-full w-full object-cover"
+                    />
+                    {/* Targeting Reticle */}
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                      <div className="relative h-32 w-56 rounded-lg border-2 border-blue-400/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
+                        <div className="absolute inset-x-2 top-1/2 h-0.5 animate-pulse bg-red-500 shadow-md" />
+                      </div>
+                    </div>
+                    <div className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-[11px] font-semibold text-slate-200 backdrop-blur-xs">
+                      Align barcode or QR code within frame
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
