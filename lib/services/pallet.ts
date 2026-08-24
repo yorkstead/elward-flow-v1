@@ -130,7 +130,9 @@ export class PalletService {
       .orderBy(desc(pallets.createdAt))
 
     return rows.map((r) => {
-      const elevationsList = (r.elevations as string[]) || []
+      const elevationsList = Array.isArray(r.elevations)
+        ? (r.elevations as string[])
+        : []
       const displayElevation =
         r.elevation ||
         (elevationsList.length > 0 ? elevationsList.join(', ') : null)
@@ -148,15 +150,17 @@ export class PalletService {
         widthInches: r.widthInches ? Number(r.widthInches) : null,
         lengthInches: r.lengthInches ? Number(r.lengthInches) : null,
         borderInches: r.borderInches ? Number(r.borderInches) : null,
-        maxHeightInches: Number(r.maxHeightInches),
-        currentHeightInches: Number(r.currentHeightInches),
-        maxWeightLbs: Number(r.maxWeightLbs),
-        currentWeightLbs: Number(r.currentWeightLbs),
-        panelCount: r.panelCount,
+        maxHeightInches: Number(r.maxHeightInches || 60),
+        currentHeightInches: Number(r.currentHeightInches || 0),
+        maxWeightLbs: Number(r.maxWeightLbs || 3500),
+        currentWeightLbs: Number(r.currentWeightLbs || 0),
+        panelCount: Number(r.panelCount || 0),
         builderName: r.builderName,
         completedAt: r.completedAt ? r.completedAt.toISOString() : null,
         notes: r.notes,
-        createdAt: r.createdAt.toISOString(),
+        createdAt: r.createdAt
+          ? r.createdAt.toISOString()
+          : new Date().toISOString(),
       }
     })
   }

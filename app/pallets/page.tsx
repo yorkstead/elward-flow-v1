@@ -29,62 +29,85 @@ export default async function PalletsPage() {
     organizationId: session.user.organizationId,
   }
 
-  const initialPallets = await PalletService.getPallets(userContext)
+  let initialPallets: Awaited<ReturnType<typeof PalletService.getPallets>> = []
+  try {
+    initialPallets = await PalletService.getPallets(userContext)
+  } catch (err) {
+    console.error('PalletsPage: error fetching initial pallets:', err)
+  }
 
   // Preload active releases
-  const releaseRows = await db
-    .select({
-      id: releases.id,
-      releaseNumber: releases.releaseNumber,
-      jobNumber: productionJobs.jobNumber,
-      jobName: productionJobs.name,
-    })
-    .from(releases)
-    .innerJoin(productionJobs, eq(releases.jobId, productionJobs.id))
-    .where(
-      eq(
-        releases.organizationId,
-        userContext.organizationId || '00000000-0000-0000-0000-000000000001',
-      ),
-    )
-    .orderBy(desc(releases.createdAt))
-    .limit(20)
+  let availableReleases: { id: string; releaseKey: string; jobNumber: string }[] = []
+  try {
+    const releaseRows = await db
+      .select({
+        id: releases.id,
+        releaseNumber: releases.releaseNumber,
+        jobNumber: productionJobs.jobNumber,
+        jobName: productionJobs.name,
+      })
+      .from(releases)
+      .innerJoin(productionJobs, eq(releases.jobId, productionJobs.id))
+      .where(
+        eq(
+          releases.organizationId,
+          userContext.organizationId || '00000000-0000-0000-0000-000000000001',
+        ),
+      )
+      .orderBy(desc(releases.createdAt))
+      .limit(20)
 
-  const availableReleases = releaseRows.map((r) => ({
-    id: r.id,
-    releaseKey: `${r.jobNumber}-R${r.releaseNumber}`,
-    jobNumber: r.jobNumber,
-  }))
+    availableReleases = releaseRows.map((r) => ({
+      id: r.id,
+      releaseKey: `${r.jobNumber}-R${r.releaseNumber}`,
+      jobNumber: r.jobNumber,
+    }))
+  } catch (err) {
+    console.error('PalletsPage: error fetching releases:', err)
+  }
 
   // Preload marks for active release revisions
-  const markRows = await db
-    .select({
-      id: panelMarks.id,
-      releaseId: releaseRevisions.releaseId,
-      mark: panelMarks.mark,
-      materialFamily: panelMarks.materialFamily,
-      color: panelMarks.color,
-      width: panelMarks.width,
-      length: panelMarks.length,
-      quantity: panelMarks.quantity,
-    })
-    .from(panelMarks)
-    .innerJoin(
-      releaseRevisions,
-      eq(panelMarks.releaseRevisionId, releaseRevisions.id),
-    )
-    .where(eq(releaseRevisions.isCurrent, true))
-    .limit(50)
+  let mappedMarks: {
+    id: string
+    releaseId: string
+    mark: string
+    materialFamily: string
+    color: string | null
+    dimensions: string | null
+    quantity: number
+  }[] = []
+  try {
+    const markRows = await db
+      .select({
+        id: panelMarks.id,
+        releaseId: releaseRevisions.releaseId,
+        mark: panelMarks.mark,
+        materialFamily: panelMarks.materialFamily,
+        color: panelMarks.color,
+        width: panelMarks.width,
+        length: panelMarks.length,
+        quantity: panelMarks.quantity,
+      })
+      .from(panelMarks)
+      .innerJoin(
+        releaseRevisions,
+        eq(panelMarks.releaseRevisionId, releaseRevisions.id),
+      )
+      .where(eq(releaseRevisions.isCurrent, true))
+      .limit(50)
 
-  const mappedMarks = markRows.map((m) => ({
-    id: m.id,
-    releaseId: m.releaseId,
-    mark: m.mark,
-    materialFamily: m.materialFamily,
-    color: m.color,
-    dimensions: m.width && m.length ? `${m.width}" × ${m.length}"` : null,
-    quantity: m.quantity,
-  }))
+    mappedMarks = markRows.map((m) => ({
+      id: m.id,
+      releaseId: m.releaseId,
+      mark: m.mark,
+      materialFamily: m.materialFamily,
+      color: m.color,
+      dimensions: m.width && m.length ? `${m.width}" × ${m.length}"` : null,
+      quantity: m.quantity,
+    }))
+  } catch (err) {
+    console.error('PalletsPage: error fetching marks:', err)
+  }
 
   const canManage =
     session.user.isAdmin ||
