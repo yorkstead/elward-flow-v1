@@ -128,7 +128,7 @@ export function GlobalSearchDialog({
         <div className="relative border-b p-4">
           <Input
             autoFocus
-            placeholder="Search by 5-digit job (54120), release (54120-1), mark (P-101), customer, project..."
+            placeholder="Search by 5-digit job (25036), release (25036-1), mark (P-101), customer, project..."
             value={query}
             onChange={(e) => {
               setQuery(e.target.value)

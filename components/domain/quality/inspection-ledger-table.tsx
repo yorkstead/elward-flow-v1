@@ -159,7 +159,7 @@ export function InspectionLedgerTable({
       const newItem: QualityInspectionItem = {
         id: `insp-${Date.now()}`,
         releaseId,
-        releaseKey: '54120-1',
+        releaseKey: '25036-1',
         markId: selectedMarkId,
         markCode: mark?.mark || 'P-101',
         quantity: parseInt(quantity, 10),

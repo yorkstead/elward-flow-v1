@@ -623,7 +623,7 @@ export function ScanStation({
             >
               <div className="relative flex-1">
                 <Input
-                  placeholder="Scan barcode, enter mark (e.g. P-101) or release (e.g. 54120-1)..."
+                  placeholder="Scan barcode, enter mark (e.g. P-101) or release (e.g. 25036-1)..."
                   value={manualCode}
                   onChange={(e) => setManualCode(e.target.value)}
                   className="h-12 pl-4 text-sm font-semibold tracking-wide"
@@ -655,10 +655,10 @@ export function ScanStation({
                   { label: 'Mark P-101 (Current)', code: 'P-101' },
                   { label: 'Mark P-102 (Hold Test)', code: 'P-102' },
                   { label: 'Mark P-103 (Scrap Test)', code: 'P-103' },
-                  { label: 'Release 54120-1', code: '54120-1' },
+                  { label: 'Release 25036-1', code: '25036-1' },
                   {
                     label: '⚠️ Obsolete Rev Barcode',
-                    code: 'EF:MARK:54120-1:P-101:REV-OLD',
+                    code: 'EF:MARK:25036-1:P-101:REV-OLD',
                   },
                 ].map((tc) => (
                   <button

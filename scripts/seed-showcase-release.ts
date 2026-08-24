@@ -37,7 +37,7 @@ import {
 import { getFileStore } from '@/lib/files/minio-file-store'
 import { generateDemoReleaseFiles } from './generate-demo-release-files'
 
-async function seedShowcaseRelease() {
+export async function seedShowcaseRelease(shouldClosePool = false) {
   console.log('=== SEEDING COMPLETE SHOWCASE ENVIRONMENT (JOB 25036) ===')
 
   // 1. Generate local files in fixtures/
@@ -1406,14 +1406,16 @@ async function seedShowcaseRelease() {
   console.log(
     'Job 25036 Release 1 is live across all shop-floor consoles, quality, inventory, and shipping!',
   )
-  await pool.end()
+  if (shouldClosePool) {
+    await pool.end()
+  }
 }
 
 if (
   (import.meta as any).main ||
   process.argv[1]?.includes('seed-showcase-release')
 ) {
-  seedShowcaseRelease().catch((err) => {
+  seedShowcaseRelease(true).catch((err) => {
     console.error('Error seeding showcase release:', err)
     process.exit(1)
   })

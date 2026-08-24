@@ -452,7 +452,7 @@ export function CncConsole({
                 WinCNC Program File (.tap / .nc)
               </label>
               <Input
-                placeholder="e.g. 54120_1_P101_ACM.tap"
+                placeholder="e.g. 25036_1_P101_ACM.tap"
                 value={machineRef}
                 onChange={(e) => setMachineRef(e.target.value)}
                 className="mt-1 h-9 font-mono text-xs"

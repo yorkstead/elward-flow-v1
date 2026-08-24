@@ -195,7 +195,7 @@ export class QualityService {
         releaseKey:
           r.jobNumber && r.releaseNumber
             ? `${r.jobNumber}-${r.releaseNumber}`
-            : '54120-1',
+            : '25036-1',
         markId: r.markId || '',
         markCode: r.markCode || 'General',
         quantity: r.quantity,
@@ -297,7 +297,7 @@ export class QualityService {
           releaseKey:
             r.jobNumber && r.releaseNumber
               ? `${r.jobNumber}-${r.releaseNumber}`
-              : '54120-1',
+              : '25036-1',
           markCode: r.markCode || 'Mark',
           agingDays,
           resolutionNotes: r.resolutionNotes,

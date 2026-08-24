@@ -12,7 +12,7 @@ test.describe('Active Release Command Center & Application Shell', () => {
     await page.getByLabel('Password').fill(password)
     await page.getByRole('button', { name: 'Sign in' }).click()
     await expect(page).toHaveURL(/\/dashboard/)
-    await page.goto('/dashboard?job=54120&release=1')
+    await page.goto('/dashboard?job=25036&release=1')
   })
 
   test('renders the pinned active release command center on desktop (1280px)', async ({
@@ -21,8 +21,8 @@ test.describe('Active Release Command Center & Application Shell', () => {
     await page.setViewportSize({ width: 1280, height: 800 })
 
     // 1. Verify Job + Release Identification Banner
-    await expect(page.getByText(/Job 54120 • Release 1/i)).toBeVisible()
-    await expect(page.getByText('Key: 54120-1')).toBeVisible()
+    await expect(page.getByText(/Job 25036 • Release 1/i)).toBeVisible()
+    await expect(page.getByText('Key: 25036-1')).toBeVisible()
     await expect(page.getByText('Rev 1 (A)', { exact: true })).toBeVisible()
     await expect(
       page.getByText(/CURRENT — Approved for Shop Floor/i),
@@ -97,7 +97,7 @@ test.describe('Active Release Command Center & Application Shell', () => {
   }) => {
     await page.setViewportSize({ width: 768, height: 1024 })
 
-    await expect(page.getByText(/Job 54120 • Release 1/i)).toBeVisible()
+    await expect(page.getByText(/Job 25036 • Release 1/i)).toBeVisible()
     await expect(
       page.getByRole('heading', { name: 'Department Execution Pipeline' }),
     ).toBeVisible()
@@ -124,12 +124,12 @@ test.describe('Active Release Command Center & Application Shell', () => {
     ).toBeVisible()
 
     const searchInput = page.getByPlaceholder(/Search by 5-digit job/i)
-    await searchInput.fill('54120')
+    await searchInput.fill('25036')
 
-    // Expect search results for Job 54120 and Release 54120-1 inside the dialog
+    // Expect search results for Job 25036 and Release 25036-1 inside the dialog
     const dialog = page.getByRole('dialog')
-    await expect(dialog.getByText('Job 54120', { exact: true })).toBeVisible()
-    await expect(dialog.getByText(/Release 54120-1/)).toBeVisible()
+    await expect(dialog.getByText('Job 25036', { exact: true })).toBeVisible()
+    await expect(dialog.getByText(/Release 25036-1/)).toBeVisible()
 
     // Close with Escape
     await page.keyboard.press('Escape')

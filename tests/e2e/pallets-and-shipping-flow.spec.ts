@@ -34,7 +34,7 @@ test.describe('Pallets and Shipping Operational Chain', () => {
     await expect(page.getByText('Staged for Ship')).toBeVisible()
 
     // Verify seeded pallet is visible
-    await expect(page.getByText('PAL-54120-R1-001').first()).toBeVisible()
+    await expect(page.getByText('PAL-25036-R1-001').first()).toBeVisible()
     await expect(
       page.getByRole('button', { name: /Packing Slip/i }),
     ).toBeVisible()
@@ -51,9 +51,9 @@ test.describe('Pallets and Shipping Operational Chain', () => {
     ).toBeVisible()
 
     // Verify seeded shipment is visible
-    await expect(page.getByText('SHP-2026-0001').first()).toBeVisible()
+    await expect(page.getByText('SHP-25036-001').first()).toBeVisible()
     await expect(
-      page.getByText('Flatbed Freight Express').first(),
+      page.getByText('Elward Dedicated Flatbed').first(),
     ).toBeVisible()
     await expect(page.getByRole('button', { name: /BOL CSV/i })).toBeVisible()
   })
