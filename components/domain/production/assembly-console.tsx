@@ -68,7 +68,7 @@ export function AssemblyConsole({
   const [submittingQc, setSubmittingQc] = React.useState(false)
 
   const assemblyStations = workstations.filter(
-    (w) => w.department === 'Assembly',
+    (w) => w.department === 'Assembly' || w.department === 'Parts Prep',
   )
 
   const filteredItems = assemblyItems.filter((i) => {

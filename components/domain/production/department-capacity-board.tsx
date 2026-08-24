@@ -23,6 +23,9 @@ export function DepartmentCapacityBoard({
         return <Cpu className="h-5 w-5 text-blue-600" />
       case 'ELU':
         return <Layers className="h-5 w-5 text-indigo-600" />
+      case 'PARTS PREP':
+      case 'PARTS':
+        return <Layers className="h-5 w-5 text-teal-600" />
       case 'ASSEMBLY':
         return <Wrench className="h-5 w-5 text-amber-600" />
       case 'QC':

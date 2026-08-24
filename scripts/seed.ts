@@ -390,13 +390,64 @@ async function main() {
 
   // Seed standard workstations
   const defaultWorkstations = [
-    { name: 'CNC Station 1 - CNT Motion 1', code: 'CNC-01', department: 'CNC' },
-    { name: 'CNC Station 2 - CNT Motion 2', code: 'CNC-02', department: 'CNC' },
+    { name: 'CNC Router 1', code: 'CNC-01', department: 'CNC' },
+    { name: 'CNC Router 2', code: 'CNC-02', department: 'CNC' },
+    { name: 'CNC Router 3', code: 'CNC-03', department: 'CNC' },
     { name: 'ELU Extrusion Saw 1', code: 'ELU-01', department: 'ELU' },
-    { name: 'Assembly Bay 1', code: 'ASSY-01', department: 'Assembly' },
+    { name: 'ELU Extrusion Saw 2', code: 'ELU-02', department: 'ELU' },
+    {
+      name: 'Parts Preparation Area',
+      code: 'PREP-01',
+      department: 'Parts Prep',
+    },
+    {
+      name: 'Assembly Row 1 - Station 1',
+      code: 'ASSY-R1-S1',
+      department: 'Assembly',
+    },
+    {
+      name: 'Assembly Row 1 - Station 2',
+      code: 'ASSY-R1-S2',
+      department: 'Assembly',
+    },
+    {
+      name: 'Assembly Row 1 - Station 3',
+      code: 'ASSY-R1-S3',
+      department: 'Assembly',
+    },
+    {
+      name: 'Assembly Row 2 - Station 1',
+      code: 'ASSY-R2-S1',
+      department: 'Assembly',
+    },
+    {
+      name: 'Assembly Row 2 - Station 2',
+      code: 'ASSY-R2-S2',
+      department: 'Assembly',
+    },
+    {
+      name: 'Assembly Row 2 - Station 3',
+      code: 'ASSY-R2-S3',
+      department: 'Assembly',
+    },
+    {
+      name: 'Assembly Row 3 - Station 1',
+      code: 'ASSY-R3-S1',
+      department: 'Assembly',
+    },
+    {
+      name: 'Assembly Row 3 - Station 2',
+      code: 'ASSY-R3-S2',
+      department: 'Assembly',
+    },
+    {
+      name: 'Assembly Row 3 - Station 3',
+      code: 'ASSY-R3-S3',
+      department: 'Assembly',
+    },
     { name: 'Main QC Inspection', code: 'QC-01', department: 'QC' },
     {
-      name: 'Palletizing & Shipping Dock 1',
+      name: 'Palletizing & Shipping Area',
       code: 'SHIP-01',
       department: 'Shipping',
     },
