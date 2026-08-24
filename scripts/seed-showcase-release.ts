@@ -819,7 +819,7 @@ export async function seedShowcaseRelease(shouldClosePool = false) {
     })
     .returning()
 
-  const [pallet2] = await db
+  await db
     .insert(pallets)
     .values({
       organizationId: organization.id,
@@ -1412,7 +1412,7 @@ export async function seedShowcaseRelease(shouldClosePool = false) {
 }
 
 if (
-  (import.meta as any).main ||
+  (import.meta as { main?: boolean }).main ||
   process.argv[1]?.includes('seed-showcase-release')
 ) {
   seedShowcaseRelease(true).catch((err) => {

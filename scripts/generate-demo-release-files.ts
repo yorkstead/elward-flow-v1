@@ -403,7 +403,7 @@ export async function generateDemoReleaseFiles() {
 }
 
 if (
-  (import.meta as any).main ||
+  (import.meta as { main?: boolean }).main ||
   process.argv[1]?.includes('generate-demo-release-files')
 ) {
   generateDemoReleaseFiles().catch((err) => {

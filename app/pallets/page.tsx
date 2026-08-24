@@ -3,7 +3,12 @@ import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/domain/app-shell'
 import { PalletService } from '@/lib/services/pallet'
 import { db } from '@/db'
-import { releases, productionJobs, panelMarks } from '@/db/schema'
+import {
+  releases,
+  releaseRevisions,
+  productionJobs,
+  panelMarks,
+} from '@/db/schema'
 import { eq, desc } from 'drizzle-orm'
 import { PalletDashboardView } from '@/components/domain/pallets/pallet-dashboard-view'
 
@@ -51,11 +56,11 @@ export default async function PalletsPage() {
     jobNumber: r.jobNumber,
   }))
 
-  // Preload marks
+  // Preload marks for active release revisions
   const markRows = await db
     .select({
       id: panelMarks.id,
-      releaseId: releases.id,
+      releaseId: releaseRevisions.releaseId,
       mark: panelMarks.mark,
       materialFamily: panelMarks.materialFamily,
       color: panelMarks.color,
@@ -64,7 +69,11 @@ export default async function PalletsPage() {
       quantity: panelMarks.quantity,
     })
     .from(panelMarks)
-    .innerJoin(releases, eq(panelMarks.releaseRevisionId, releases.id))
+    .innerJoin(
+      releaseRevisions,
+      eq(panelMarks.releaseRevisionId, releaseRevisions.id),
+    )
+    .where(eq(releaseRevisions.isCurrent, true))
     .limit(50)
 
   const mappedMarks = markRows.map((m) => ({

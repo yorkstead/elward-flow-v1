@@ -17,6 +17,7 @@ import {
 } from '@/db/schema'
 import { eq, and, sql } from 'drizzle-orm'
 import { DomainService } from './domain'
+import { PalletPlannerService } from './pallet-planner'
 import type { ParsedPanelMarkInput, IntakeFileItem } from './intake'
 
 export interface ImpactDispositionInput {
@@ -496,7 +497,14 @@ export class RevisionControlService {
         }
       }
 
-      // 8. Immutable Audit Log
+      // 8. Invalidate prior pallet plans
+      await PalletPlannerService.invalidateStalePlansForRelease(
+        rel.id,
+        newRevision.id,
+        tx,
+      )
+
+      // 9. Immutable Audit Log
       await tx.insert(auditEvents).values({
         organizationId,
         actorId: actor.userId,

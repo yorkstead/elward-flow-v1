@@ -57,6 +57,13 @@
       "when": 1787403721386,
       "tag": "0007_cold_sleeper",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787563376504,
+      "tag": "0008_funny_hex",
+      "breakpoints": true
     }
   ]
 }

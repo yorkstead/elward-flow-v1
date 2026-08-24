@@ -354,6 +354,8 @@ export const panelMarks = pgTable(
     width: numeric('width', { precision: 10, scale: 4 }),
     length: numeric('length', { precision: 10, scale: 4 }),
     dimensionUnit: text('dimension_unit').notNull().default('in'),
+    elevation: text('elevation'),
+    sourceMetadata: jsonb('source_metadata'),
     notes: text('notes'),
     isRemake: boolean('is_remake').notNull().default(false),
     originalMarkId: uuid('original_mark_id'),
@@ -1212,8 +1214,128 @@ export const jobs = pgTable(
 )
 
 // ============================================================================
-// 9. Palletizing & Logistics (Pallets, Pallet Items, Shipments, Shipment Pallets)
+// 9. Palletizing & Logistics (Pallet Plans, Pallets, Pallet Items, Shipments)
 // ============================================================================
+
+export const palletPlanStatusEnum = pgEnum('pallet_plan_status', [
+  'Draft',
+  'Review',
+  'Approved',
+  'Applied',
+  'Superseded',
+  'Cancelled',
+])
+
+export const palletPlans = pgTable(
+  'pallet_plans',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    releaseId: uuid('release_id')
+      .notNull()
+      .references(() => releases.id, { onDelete: 'cascade' }),
+    releaseRevisionId: uuid('release_revision_id')
+      .notNull()
+      .references(() => releaseRevisions.id, { onDelete: 'cascade' }),
+    status: palletPlanStatusEnum('status').notNull().default('Draft'),
+    algorithmVersion: text('algorithm_version').notNull().default('1.0.0'),
+    generatedById: uuid('generated_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    generatedAt: timestamp('generated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    approvedById: uuid('approved_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    approvedAt: timestamp('approved_at', { withTimezone: true }),
+    appliedById: uuid('applied_by_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    appliedAt: timestamp('applied_at', { withTimezone: true }),
+    supersededAt: timestamp('superseded_at', { withTimezone: true }),
+    warnings: jsonb('warnings').notNull().default([]),
+    metadata: jsonb('metadata').notNull().default({}),
+    ...timestamps,
+  },
+  (table) => [
+    index('pallet_plans_org_release_idx').on(
+      table.organizationId,
+      table.releaseId,
+    ),
+    index('pallet_plans_release_rev_idx').on(
+      table.organizationId,
+      table.releaseRevisionId,
+    ),
+  ],
+)
+
+export const palletPlanPallets = pgTable(
+  'pallet_plan_pallets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    palletPlanId: uuid('pallet_plan_id')
+      .notNull()
+      .references(() => palletPlans.id, { onDelete: 'cascade' }),
+    sequence: integer('sequence').notNull().default(1),
+    plannedPalletNumber: text('planned_pallet_number').notNull(),
+    widthInches: numeric('width_inches', { precision: 10, scale: 2 })
+      .notNull()
+      .default('0.00'),
+    lengthInches: numeric('length_inches', { precision: 10, scale: 2 })
+      .notNull()
+      .default('0.00'),
+    heightInches: numeric('height_inches', { precision: 10, scale: 2 })
+      .notNull()
+      .default('0.00'),
+    weightLbs: numeric('weight_lbs', { precision: 10, scale: 2 })
+      .notNull()
+      .default('0.00'),
+    borderInches: numeric('border_inches', { precision: 10, scale: 2 })
+      .notNull()
+      .default('4.00'),
+    elevations: jsonb('elevations').notNull().default([]),
+    materialFamilies: jsonb('material_families').notNull().default([]),
+    panelCount: integer('panel_count').notNull().default(0),
+    notes: text('notes'),
+    warnings: jsonb('warnings').notNull().default([]),
+    overrides: jsonb('overrides').notNull().default([]),
+    ...timestamps,
+  },
+  (table) => [index('pallet_plan_pallets_plan_idx').on(table.palletPlanId)],
+)
+
+export const palletPlanItems = pgTable(
+  'pallet_plan_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    palletPlanPalletId: uuid('pallet_plan_pallet_id')
+      .notNull()
+      .references(() => palletPlanPallets.id, { onDelete: 'cascade' }),
+    panelMarkId: uuid('panel_mark_id')
+      .notNull()
+      .references(() => panelMarks.id, { onDelete: 'cascade' }),
+    quantity: integer('quantity').notNull().default(1),
+    sequence: integer('sequence').notNull().default(1),
+    elevation: text('elevation'),
+    calculatedWeight: numeric('calculated_weight', { precision: 10, scale: 2 }),
+    calculatedHeight: numeric('calculated_height', { precision: 10, scale: 2 }),
+    sourceMetadata: jsonb('source_metadata').notNull().default({}),
+    ...timestamps,
+  },
+  (table) => [
+    index('pallet_plan_items_pallet_idx').on(table.palletPlanPalletId),
+    index('pallet_plan_items_mark_idx').on(table.panelMarkId),
+  ],
+)
 
 export const pallets = pgTable(
   'pallets',
@@ -1230,8 +1352,15 @@ export const pallets = pgTable(
       () => releaseRevisions.id,
       { onDelete: 'set null' },
     ),
+    palletPlanId: uuid('pallet_plan_id').references(() => palletPlans.id, {
+      onDelete: 'set null',
+    }),
     status: text('status').notNull().default('Draft'), // 'Draft' | 'Building' | 'Completed' | 'Staged' | 'Shipped'
     elevation: text('elevation'),
+    elevations: jsonb('elevations').notNull().default([]),
+    widthInches: numeric('width_inches', { precision: 10, scale: 2 }),
+    lengthInches: numeric('length_inches', { precision: 10, scale: 2 }),
+    borderInches: numeric('border_inches', { precision: 10, scale: 2 }),
     maxHeightInches: numeric('max_height_inches', { precision: 10, scale: 2 })
       .notNull()
       .default('60.00'),
@@ -1243,7 +1372,7 @@ export const pallets = pgTable(
       .default('0.00'),
     maxWeightLbs: numeric('max_weight_lbs', { precision: 10, scale: 2 })
       .notNull()
-      .default('2500.00'),
+      .default('3500.00'),
     currentWeightLbs: numeric('current_weight_lbs', {
       precision: 10,
       scale: 2,
@@ -1282,6 +1411,9 @@ export const palletItems = pgTable(
       .references(() => panelMarks.id, { onDelete: 'cascade' }),
     quantity: integer('quantity').notNull().default(1),
     sequence: integer('sequence').notNull().default(1),
+    elevation: text('elevation'),
+    calculatedWeight: numeric('calculated_weight', { precision: 10, scale: 2 }),
+    calculatedHeight: numeric('calculated_height', { precision: 10, scale: 2 }),
     stagedAt: timestamp('staged_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -1390,6 +1522,7 @@ export const releasesRelations = relations(releases, ({ one, many }) => ({
   }),
   revisions: many(releaseRevisions),
   pallets: many(pallets),
+  palletPlans: many(palletPlans),
 }))
 
 export const releaseRevisionsRelations = relations(
@@ -1401,6 +1534,56 @@ export const releaseRevisionsRelations = relations(
     }),
     panelMarks: many(panelMarks),
     operations: many(operationInstances),
+    palletPlans: many(palletPlans),
+  }),
+)
+
+export const palletPlansRelations = relations(palletPlans, ({ one, many }) => ({
+  release: one(releases, {
+    fields: [palletPlans.releaseId],
+    references: [releases.id],
+  }),
+  releaseRevision: one(releaseRevisions, {
+    fields: [palletPlans.releaseRevisionId],
+    references: [releaseRevisions.id],
+  }),
+  pallets: many(palletPlanPallets),
+  generatedBy: one(users, {
+    fields: [palletPlans.generatedById],
+    references: [users.id],
+  }),
+  approvedBy: one(users, {
+    fields: [palletPlans.approvedById],
+    references: [users.id],
+  }),
+  appliedBy: one(users, {
+    fields: [palletPlans.appliedById],
+    references: [users.id],
+  }),
+}))
+
+export const palletPlanPalletsRelations = relations(
+  palletPlanPallets,
+  ({ one, many }) => ({
+    plan: one(palletPlans, {
+      fields: [palletPlanPallets.palletPlanId],
+      references: [palletPlans.id],
+    }),
+    items: many(palletPlanItems),
+  }),
+)
+
+export const palletPlanItemsRelations = relations(
+  palletPlanItems,
+  ({ one }) => ({
+    pallet: one(palletPlanPallets, {
+      fields: [palletPlanItems.palletPlanPalletId],
+      references: [palletPlanPallets.id],
+    }),
+    panelMark: one(panelMarks, {
+      fields: [palletPlanItems.panelMarkId],
+      references: [panelMarks.id],
+    }),
   }),
 )
 
@@ -1412,6 +1595,10 @@ export const palletsRelations = relations(pallets, ({ one, many }) => ({
   releaseRevision: one(releaseRevisions, {
     fields: [pallets.releaseRevisionId],
     references: [releaseRevisions.id],
+  }),
+  palletPlan: one(palletPlans, {
+    fields: [pallets.palletPlanId],
+    references: [palletPlans.id],
   }),
   items: many(palletItems),
   shipmentPallets: many(shipmentPallets),

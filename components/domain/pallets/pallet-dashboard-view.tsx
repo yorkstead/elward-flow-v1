@@ -27,11 +27,13 @@ import {
   Package,
   Layers,
   Truck,
-  Weight,
-  Ruler,
   AlertTriangle,
+  Sparkles,
+  Search,
+  Trash2,
 } from 'lucide-react'
 import { PalletSummary } from '@/lib/services/pallet'
+import { PalletPlanView } from './pallet-plan-view'
 
 interface PalletDashboardProps {
   initialPallets: PalletSummary[]
@@ -48,19 +50,24 @@ interface PalletDashboardProps {
   canManage: boolean
 }
 
+type MainTab = 'PLAN' | 'BUILD' | 'STAGED' | 'SHIPPED'
+
 export function PalletDashboardView({
   initialPallets,
   availableReleases,
   availableMarks,
   canManage,
 }: PalletDashboardProps) {
+  const [activeTab, setActiveTab] = useState<MainTab>('PLAN')
   const [palletsList, setPalletsList] =
     useState<PalletSummary[]>(initialPallets)
   const [selectedPallet, setSelectedPallet] = useState<PalletSummary | null>(
     palletsList[0] || null,
   )
   const [searchFilter, setSearchFilter] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('ALL')
+  const [selectedPlanReleaseId, setSelectedPlanReleaseId] = useState(
+    availableReleases[0]?.id || '',
+  )
 
   // Modals
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -79,7 +86,7 @@ export function PalletDashboardView({
   // Metrics
   const totalPallets = palletsList.length
   const buildingPallets = palletsList.filter(
-    (p) => p.status === 'Building',
+    (p) => p.status === 'Building' || p.status === 'Draft',
   ).length
   const stagedPallets = palletsList.filter((p) => p.status === 'Staged').length
   const shippedPallets = palletsList.filter(
@@ -92,21 +99,36 @@ export function PalletDashboardView({
       p.palletNumber.toLowerCase().includes(searchFilter.toLowerCase()) ||
       p.releaseKey.toLowerCase().includes(searchFilter.toLowerCase()) ||
       (p.elevation &&
-        p.elevation.toLowerCase().includes(searchFilter.toLowerCase()))
-    const matchesStatus =
-      statusFilter === 'ALL' || p.status.toUpperCase() === statusFilter
-    return matchesSearch && matchesStatus
+        p.elevation.toLowerCase().includes(searchFilter.toLowerCase())) ||
+      (p.elevations &&
+        p.elevations.some((e) =>
+          e.toLowerCase().includes(searchFilter.toLowerCase()),
+        ))
+
+    let matchesTab = true
+    if (activeTab === 'BUILD') {
+      matchesTab = p.status === 'Building' || p.status === 'Draft'
+    } else if (activeTab === 'STAGED') {
+      matchesTab = p.status === 'Staged'
+    } else if (activeTab === 'SHIPPED') {
+      matchesTab = p.status === 'Shipped'
+    }
+
+    return matchesSearch && matchesTab
   })
 
-  const refreshPalletDetail = async (id: string) => {
+  const refreshPallets = async () => {
     try {
-      const res = await fetch(`/api/pallets/${id}`)
+      const res = await fetch('/api/pallets')
       if (res.ok) {
-        const data = (await res.json()) as { pallet: PalletSummary }
-        setSelectedPallet(data.pallet)
-        setPalletsList((prev) =>
-          prev.map((p) => (p.id === id ? data.pallet : p)),
-        )
+        const data = await res.json()
+        setPalletsList(data.pallets || [])
+        if (selectedPallet) {
+          const updated = data.pallets.find(
+            (p: PalletSummary) => p.id === selectedPallet.id,
+          )
+          if (updated) setSelectedPallet(updated)
+        }
       }
     } catch {
       // ignore
@@ -126,7 +148,7 @@ export function PalletDashboardView({
           releaseId: selectedReleaseId,
           elevation: newElevation,
           maxHeightInches: 60,
-          maxWeightLbs: 2500,
+          maxWeightLbs: 3500,
         }),
       })
 
@@ -182,6 +204,32 @@ export function PalletDashboardView({
     }
   }
 
+  const handleRemoveItem = async (itemId: string) => {
+    if (!selectedPallet) return
+    setIsSubmitting(true)
+    try {
+      const res = await fetch(
+        `/api/pallets/${selectedPallet.id}/items?itemId=${itemId}`,
+        {
+          method: 'DELETE',
+        },
+      )
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Failed to remove item')
+      }
+      const data = await res.json()
+      setSelectedPallet(data.pallet)
+      setPalletsList((prev) =>
+        prev.map((p) => (p.id === selectedPallet.id ? data.pallet : p)),
+      )
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to remove item')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const handleCompletePallet = async (palletId: string) => {
     setIsSubmitting(true)
     try {
@@ -204,37 +252,66 @@ export function PalletDashboardView({
     }
   }
 
+  const handleExportCsv = async (palletId: string) => {
+    try {
+      window.open(`/api/pallets/${palletId}/export`, '_blank')
+    } catch {
+      alert('Failed to export packing slip')
+    }
+  }
+
+  const currentPlanRelease =
+    availableReleases.find((r) => r.id === selectedPlanReleaseId) ||
+    availableReleases[0]
+
   return (
     <div className="space-y-6">
-      {/* Top Header & Quick Actions */}
+      {/* Top Navigation & Mode Switcher */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-slate-900">
             Palletizing &amp; Staging Command Center
           </h1>
           <p className="text-xs text-slate-500">
-            Stack sequence verification, height/weight constraint limits, and
-            packing slips
+            Intelligent release planning, multi-elevation stacking, weight
+            limits, and packing slips
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {canManage && (
-            <Button
-              onClick={() => {
-                setErrorMessage(null)
-                setIsCreateOpen(true)
-              }}
-              size="sm"
-              className="bg-blue-600 text-xs font-semibold hover:bg-blue-700"
-            >
-              <Plus className="mr-1.5 h-3.5 w-3.5" />
-              Build New Pallet
-            </Button>
-          )}
+
+        {/* Tab Controls: PLAN | BUILD | STAGED | SHIPPED */}
+        <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 p-1">
+          {(
+            [
+              { key: 'PLAN', label: 'Plan', icon: Sparkles },
+              { key: 'BUILD', label: 'Build', icon: Layers },
+              { key: 'STAGED', label: 'Staged', icon: CheckCircle },
+              { key: 'SHIPPED', label: 'Shipped', icon: Truck },
+            ] as const
+          ).map((tab) => {
+            const Icon = tab.icon
+            const isActive = activeTab === tab.key
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-bold transition-all ${
+                  isActive
+                    ? 'bg-white text-blue-700 shadow-xs ring-1 ring-slate-200'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Icon
+                  className={`h-3.5 w-3.5 ${isActive ? 'text-blue-600' : 'text-slate-400'}`}
+                />
+                {tab.label}
+              </button>
+            )
+          })}
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards Bar */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <Card className="border-slate-200 bg-white p-3 shadow-xs">
           <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
@@ -283,280 +360,316 @@ export function PalletDashboardView({
         </Card>
       </div>
 
-      {/* Main Split Layout: Pallet Grid & Selected Detail */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        {/* Left Column: Pallet List & Filter (7 cols) */}
-        <div className="space-y-4 lg:col-span-7">
-          <div className="flex flex-wrap items-center gap-2">
-            <Input
-              placeholder="Search pallet #, release key, elevation..."
-              value={searchFilter}
-              onChange={(e) => setSearchFilter(e.target.value)}
-              className="h-8 max-w-xs text-xs"
-            />
-            <div className="flex items-center gap-1">
-              {(['ALL', 'BUILDING', 'STAGED', 'SHIPPED'] as const).map((st) => (
-                <Button
-                  key={st}
-                  variant={statusFilter === st ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setStatusFilter(st)}
-                  className="h-8 text-[10px] font-bold uppercase"
-                >
-                  {st}
-                </Button>
-              ))}
+      {/* TAB 1: PLAN VIEW */}
+      {activeTab === 'PLAN' && (
+        <div className="space-y-4">
+          {/* Release Selection Bar */}
+          <div className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3 shadow-xs sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-700">
+                Target Release:
+              </span>
+              <select
+                value={selectedPlanReleaseId}
+                onChange={(e) => setSelectedPlanReleaseId(e.target.value)}
+                className="rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-900 focus:ring-1 focus:ring-blue-600"
+              >
+                {availableReleases.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.releaseKey} (Job #{r.jobNumber})
+                  </option>
+                ))}
+              </select>
             </div>
+            <span className="text-[11px] text-slate-500">
+              Only active approved revisions generate release plans.
+            </span>
           </div>
 
-          <div className="space-y-3">
-            {filteredPallets.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-slate-200 p-8 text-center text-xs text-slate-400">
-                No pallets found matching your criteria.
-              </div>
-            ) : (
-              filteredPallets.map((p) => {
-                const isSelected = selectedPallet?.id === p.id
-                const weightPercent = Math.min(
-                  100,
-                  (p.currentWeightLbs / (p.maxWeightLbs || 2500)) * 100,
-                )
-                const heightPercent = Math.min(
-                  100,
-                  (p.currentHeightInches / (p.maxHeightInches || 60)) * 100,
-                )
+          {currentPlanRelease && (
+            <PalletPlanView
+              releaseId={currentPlanRelease.id}
+              releaseKey={currentPlanRelease.releaseKey}
+              jobNumber={currentPlanRelease.jobNumber}
+              canManage={canManage}
+              onPlanApplied={() => {
+                refreshPallets()
+                setActiveTab('BUILD')
+              }}
+            />
+          )}
+        </div>
+      )}
 
-                return (
-                  <div
-                    key={p.id}
-                    onClick={() => {
-                      setSelectedPallet(p)
-                      refreshPalletDetail(p.id)
-                    }}
-                    className={`cursor-pointer rounded-lg border p-4 transition-all ${
-                      isSelected
-                        ? 'border-blue-600 bg-blue-50/40 shadow-xs'
-                        : 'border-slate-200 bg-white hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-slate-900">
-                            {p.palletNumber}
-                          </span>
-                          <Badge
-                            variant="outline"
-                            className={`text-[10px] font-bold uppercase ${
-                              p.status === 'Shipped'
-                                ? 'border-blue-200 bg-blue-100 text-blue-800'
-                                : p.status === 'Staged'
-                                  ? 'border-emerald-200 bg-emerald-100 text-emerald-800'
-                                  : 'border-amber-200 bg-amber-100 text-amber-800'
-                            }`}
-                          >
-                            {p.status}
-                          </Badge>
-                        </div>
-                        <div className="mt-1 text-xs text-slate-500">
-                          Release{' '}
-                          <span className="font-semibold text-slate-700">
-                            {p.releaseKey}
-                          </span>{' '}
-                          • {p.elevation || 'No Elevation Group'}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-black text-slate-900">
-                          {p.panelCount} Panels
-                        </div>
-                        <div className="text-[10px] text-slate-400">
-                          {p.currentWeightLbs.toFixed(0)} / {p.maxWeightLbs} lbs
-                        </div>
-                      </div>
-                    </div>
+      {/* TABS 2, 3, 4: BUILD / STAGED / SHIPPED OPERATIONAL VIEWS */}
+      {activeTab !== 'PLAN' && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="relative w-72">
+              <Search className="absolute top-2.5 left-2.5 h-3.5 w-3.5 text-slate-400" />
+              <Input
+                placeholder="Search pallet #, release key, elevation..."
+                value={searchFilter}
+                onChange={(e) => setSearchFilter(e.target.value)}
+                className="h-8 bg-white pl-8 text-xs"
+              />
+            </div>
 
-                    {/* Weight & Height Micro-Bars */}
-                    <div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-100 pt-2">
-                      <div>
-                        <div className="mb-1 flex justify-between text-[10px] text-slate-500">
-                          <span>Weight</span>
-                          <span>{weightPercent.toFixed(0)}%</span>
-                        </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                          <div
-                            className={`h-full ${weightPercent > 90 ? 'bg-red-500' : 'bg-blue-600'}`}
-                            style={{ width: `${weightPercent}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <div className="mb-1 flex justify-between text-[10px] text-slate-500">
-                          <span>Height</span>
-                          <span>
-                            {p.currentHeightInches.toFixed(1)}&quot; /{' '}
-                            {p.maxHeightInches}&quot;
-                          </span>
-                        </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                          <div
-                            className={`h-full ${heightPercent > 90 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                            style={{ width: `${heightPercent}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })
+            {canManage && activeTab === 'BUILD' && (
+              <Button
+                onClick={() => {
+                  setErrorMessage(null)
+                  setIsCreateOpen(true)
+                }}
+                size="sm"
+                className="bg-blue-600 text-xs font-semibold hover:bg-blue-700"
+              >
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                Build Manual Pallet
+              </Button>
             )}
           </div>
-        </div>
 
-        {/* Right Column: Selected Pallet Inspector (5 cols) */}
-        <div className="space-y-4 lg:col-span-5">
-          {selectedPallet ? (
-            <Card className="border-slate-200 bg-white shadow-xs">
-              <CardHeader className="border-b border-slate-100 pb-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base font-bold text-slate-900">
-                      {selectedPallet.palletNumber}
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      {selectedPallet.releaseKey} • {selectedPallet.jobName}
-                    </CardDescription>
-                  </div>
-                  <a
-                    href={`/api/pallets/${selectedPallet.id}/export`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <Button variant="outline" size="sm" className="h-7 text-xs">
-                      <FileSpreadsheet className="mr-1 h-3.5 w-3.5 text-emerald-600" />
-                      Packing Slip
-                    </Button>
-                  </a>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4 pt-4">
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="rounded-lg bg-slate-50 p-2.5">
-                    <div className="flex items-center gap-1 text-slate-500">
-                      <Weight className="h-3.5 w-3.5" /> Total Weight
-                    </div>
-                    <div className="mt-1 font-bold text-slate-900">
-                      {selectedPallet.currentWeightLbs.toFixed(1)} lbs
-                    </div>
-                  </div>
-                  <div className="rounded-lg bg-slate-50 p-2.5">
-                    <div className="flex items-center gap-1 text-slate-500">
-                      <Ruler className="h-3.5 w-3.5" /> Stack Height
-                    </div>
-                    <div className="mt-1 font-bold text-slate-900">
-                      {selectedPallet.currentHeightInches.toFixed(1)} inches
-                    </div>
-                  </div>
-                </div>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+            {/* Left: Operational Pallets Grid (7 cols) */}
+            <div className="space-y-3 lg:col-span-7">
+              {filteredPallets.length === 0 ? (
+                <Card className="p-8 text-center text-xs text-slate-400">
+                  No {activeTab.toLowerCase()} pallets found.
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {filteredPallets.map((p) => {
+                    const isSelected = p.id === selectedPallet?.id
+                    const elevations =
+                      p.elevations && p.elevations.length > 0
+                        ? p.elevations
+                        : p.elevation
+                          ? [p.elevation]
+                          : ['General']
 
-                {/* Pallet Stacking Manifest Table */}
-                <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-800">
-                      Stack Contents ({selectedPallet.items?.length || 0} items)
-                    </span>
-                    {canManage && selectedPallet.status !== 'Shipped' && (
+                    return (
+                      <Card
+                        key={p.id}
+                        onClick={() => setSelectedPallet(p)}
+                        className={`cursor-pointer transition-all hover:border-blue-400 ${
+                          isSelected
+                            ? 'border-blue-600 bg-blue-50/40 ring-1 ring-blue-600'
+                            : 'border-slate-200 bg-white'
+                        }`}
+                      >
+                        <CardHeader className="p-3.5 pb-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono text-xs font-bold text-slate-900">
+                              {p.palletNumber}
+                            </span>
+                            <Badge
+                              className={`text-[10px] ${
+                                p.status === 'Staged'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : p.status === 'Shipped'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-amber-100 text-amber-800'
+                              }`}
+                            >
+                              {p.status.toUpperCase()}
+                            </Badge>
+                          </div>
+                          <CardDescription className="text-[11px] font-semibold text-slate-600">
+                            {p.releaseKey} • Job #{p.jobNumber}
+                          </CardDescription>
+                        </CardHeader>
+
+                        <CardContent className="space-y-2 p-3.5 pt-0 text-xs">
+                          {/* Dimensions */}
+                          {p.widthInches && p.lengthInches && (
+                            <div className="font-mono text-[11px] text-slate-500">
+                              {`${p.widthInches}" × ${p.lengthInches}"`}
+                            </div>
+                          )}
+
+                          {/* Capacity indicators */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-[10px] font-semibold text-slate-500">
+                              <span>
+                                Weight: {p.currentWeightLbs} / {p.maxWeightLbs}{' '}
+                                lb
+                              </span>
+                              <span>
+                                {(
+                                  (p.currentWeightLbs / p.maxWeightLbs) *
+                                  100
+                                ).toFixed(0)}
+                                %
+                              </span>
+                            </div>
+                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                              <div
+                                className="h-full bg-emerald-500"
+                                style={{
+                                  width: `${Math.min(100, (p.currentWeightLbs / p.maxWeightLbs) * 100)}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Elevations */}
+                          <div className="flex flex-wrap gap-1 pt-1">
+                            {elevations.map((e, idx) => (
+                              <Badge
+                                key={idx}
+                                className="bg-slate-100 text-[10px] font-medium text-slate-700"
+                              >
+                                {e}
+                              </Badge>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Right: Selected Pallet Inspector (5 cols) */}
+            <div className="space-y-4 lg:col-span-5">
+              {selectedPallet ? (
+                <Card className="border-slate-200 bg-white shadow-xs">
+                  <CardHeader className="border-b border-slate-100 pb-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-base font-black text-slate-900">
+                          {selectedPallet.palletNumber}
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                          {selectedPallet.releaseKey} • {selectedPallet.status}
+                        </CardDescription>
+                      </div>
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => {
-                          setErrorMessage(null)
-                          setIsAddItemOpen(true)
-                        }}
-                        className="h-6 text-[11px]"
+                        onClick={() => handleExportCsv(selectedPallet.id)}
+                        className="text-xs font-semibold text-slate-700"
                       >
-                        <Plus className="mr-1 h-3 w-3" /> Add Mark
+                        <FileSpreadsheet className="mr-1 h-3.5 w-3.5 text-emerald-600" />
+                        Packing Slip
+                      </Button>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="space-y-4 pt-4 text-xs">
+                    <div className="grid grid-cols-2 gap-2 rounded-md bg-slate-50 p-3">
+                      <div>
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase">
+                          Total Panels
+                        </span>
+                        <span className="text-base font-black text-slate-900">
+                          {selectedPallet.panelCount}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase">
+                          Total Weight
+                        </span>
+                        <span className="text-base font-black text-slate-900">
+                          {selectedPallet.currentWeightLbs} lb
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Staged Items List */}
+                    <div>
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <span className="font-bold text-slate-700">
+                          Stacked Panels ({selectedPallet.items?.length || 0})
+                        </span>
+                        {canManage && selectedPallet.status === 'Building' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setIsAddItemOpen(true)}
+                            className="h-6 text-[10px] font-semibold text-blue-700"
+                          >
+                            <Plus className="mr-1 h-3 w-3" />
+                            Add Panel
+                          </Button>
+                        )}
+                      </div>
+
+                      <div className="divide-y divide-slate-100 rounded-md border border-slate-200">
+                        {(selectedPallet.items || []).map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex items-center justify-between p-2.5 hover:bg-slate-50"
+                          >
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono font-bold text-blue-700">
+                                  {item.markCode}
+                                </span>
+                                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-900">
+                                  × {item.quantity}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-slate-500">
+                                {item.materialFamily} •{' '}
+                                {item.dimensions || 'Custom'}{' '}
+                                {item.elevation && `• ${item.elevation}`}
+                              </div>
+                            </div>
+
+                            {canManage &&
+                              selectedPallet.status === 'Building' && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleRemoveItem(item.id)}
+                                  className="h-6 w-6 p-0 text-slate-400 hover:text-rose-600"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Complete & Stage Button */}
+                    {canManage && selectedPallet.status === 'Building' && (
+                      <Button
+                        onClick={() => handleCompletePallet(selectedPallet.id)}
+                        disabled={
+                          isSubmitting || selectedPallet.panelCount === 0
+                        }
+                        className="w-full bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700"
+                      >
+                        <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
+                        Complete &amp; Stage for Shipping
                       </Button>
                     )}
-                  </div>
-
-                  <div className="max-h-64 overflow-y-auto rounded-md border border-slate-200">
-                    <table className="w-full text-left text-xs">
-                      <thead className="sticky top-0 bg-slate-50 text-[10px] font-bold text-slate-500 uppercase">
-                        <tr>
-                          <th className="p-2">Seq</th>
-                          <th className="p-2">Mark</th>
-                          <th className="p-2">Material</th>
-                          <th className="p-2 text-right">Qty</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {!selectedPallet.items ||
-                        selectedPallet.items.length === 0 ? (
-                          <tr>
-                            <td
-                              colSpan={4}
-                              className="p-4 text-center text-slate-400"
-                            >
-                              No items loaded onto this pallet yet.
-                            </td>
-                          </tr>
-                        ) : (
-                          selectedPallet.items.map((item) => (
-                            <tr key={item.id} className="hover:bg-slate-50/50">
-                              <td className="p-2 font-mono text-[10px] text-slate-400">
-                                #{item.sequence}
-                              </td>
-                              <td className="p-2 font-bold text-slate-800">
-                                {item.markCode}
-                              </td>
-                              <td className="p-2 text-slate-500">
-                                {item.materialFamily}
-                              </td>
-                              <td className="p-2 text-right font-black text-slate-900">
-                                {item.quantity}
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="rounded-lg border border-dashed p-8 text-center text-xs text-slate-400">
+                  Select a pallet to inspect details
                 </div>
-
-                {/* Finalize Actions */}
-                {canManage && selectedPallet.status === 'Building' && (
-                  <Button
-                    onClick={() => handleCompletePallet(selectedPallet.id)}
-                    disabled={isSubmitting || selectedPallet.panelCount === 0}
-                    className="w-full bg-emerald-600 text-xs font-bold hover:bg-emerald-700"
-                  >
-                    <CheckCircle className="mr-1.5 h-3.5 w-3.5" />
-                    Complete &amp; Stage for Shipping
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="rounded-lg border border-dashed border-slate-200 p-8 text-center text-xs text-slate-400">
-              Select a pallet from the list to view stack details and packing
-              slip.
+              )}
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Build Pallet Modal */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="bg-white sm:max-w-md">
           <form onSubmit={handleCreatePallet}>
             <DialogHeader>
               <DialogTitle className="text-base font-bold">
                 Build New Pallet
               </DialogTitle>
               <DialogDescription className="text-xs">
-                Create an empty pallet container linked to an active release and
-                elevation zone.
+                Create an empty pallet container linked to an active release.
               </DialogDescription>
             </DialogHeader>
 
@@ -579,7 +692,7 @@ export function PalletDashboardView({
                 >
                   {availableReleases.map((r) => (
                     <option key={r.id} value={r.id}>
-                      {r.releaseKey} (Job {r.jobNumber})
+                      {r.releaseKey} (Job #{r.jobNumber})
                     </option>
                   ))}
                 </select>
@@ -587,7 +700,7 @@ export function PalletDashboardView({
 
               <div>
                 <label className="font-semibold text-slate-700">
-                  Elevation Grouping
+                  Initial Elevation Grouping
                 </label>
                 <input
                   type="text"
@@ -623,7 +736,7 @@ export function PalletDashboardView({
 
       {/* Add Item Modal */}
       <Dialog open={isAddItemOpen} onOpenChange={setIsAddItemOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="bg-white sm:max-w-md">
           <form onSubmit={handleAddItem}>
             <DialogHeader>
               <DialogTitle className="text-base font-bold">
@@ -665,7 +778,7 @@ export function PalletDashboardView({
                 <input
                   type="number"
                   min={1}
-                  max={50}
+                  max={100}
                   value={addItemQty}
                   onChange={(e) =>
                     setAddItemQty(Math.max(1, parseInt(e.target.value) || 1))
