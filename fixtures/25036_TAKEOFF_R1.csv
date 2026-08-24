@@ -1,0 +1,13 @@
+Mark,Qty,Width,Height,Material,Color,Finish,AreaSqFt,WeightLbs,Elevation,Notes
+P-101,4,48.00,96.00,ACM,Charcoal Grey,Solid 2-Coat PVDF,32.00,38.40,North Elevation,Standard Field Panel w/ perimeter return flanges
+P-102,4,48.00,96.00,ACM,Charcoal Grey,Solid 2-Coat PVDF,32.00,38.40,North Elevation,Standard Field Panel w/ perimeter return flanges
+P-103,4,48.00,120.00,ACM,Bright Silver,Metallic 3-Coat PVDF,40.00,48.00,North Elevation,Full Height Spandrel Panel
+P-104,2,48.00,120.00,ACM,Bright Silver,Metallic 3-Coat PVDF,40.00,48.00,East Elevation,Parapet Coping Transition Panel
+P-105,3,36.00,96.00,ACM,Charcoal Grey,Solid 2-Coat PVDF,24.00,28.80,East Elevation,Window Return Infill Panel
+P-106,3,36.00,96.00,ACM,Charcoal Grey,Solid 2-Coat PVDF,24.00,28.80,South Elevation,Window Return Infill Panel
+P-107,2,60.00,120.00,ACM,Bone White,Solid 2-Coat PVDF,50.00,60.00,South Elevation,Main Entrance Soffit Cladding
+P-108,2,60.00,120.00,ACM,Bone White,Solid 2-Coat PVDF,50.00,60.00,West Elevation,Main Entrance Soffit Cladding
+C-201,4,24.00,96.00,ACM,Charcoal Grey,Solid 2-Coat PVDF,16.00,19.20,North Elevation,Outside 90-Degree Corner Column Panel
+C-202,2,24.00,120.00,ACM,Bright Silver,Metallic 3-Coat PVDF,20.00,24.00,East Elevation,Outside 90-Degree Corner Column Panel
+S-301,6,30.00,72.00,ACM,Classic Bronze,Mica 2-Coat PVDF,15.00,18.00,Canopy,Underside Canopy Soffit Panel w/ weep holes
+S-302,4,30.00,72.00,ACM,Classic Bronze,Mica 2-Coat PVDF,15.00,18.00,Canopy,Underside Canopy Soffit Panel w/ weep holes
