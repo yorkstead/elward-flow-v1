@@ -20,6 +20,11 @@ import {
   Plus,
   FileSpreadsheet,
   AlertTriangle,
+  Pencil,
+  Trash2,
+  UserCheck,
+  UserX,
+  Loader2,
 } from 'lucide-react'
 import {
   UserManagementItem,
@@ -65,17 +70,35 @@ export function AdminDashboardView({
 
   // Modals
   const [isCreateUserOpen, setIsCreateUserOpen] = useState(false)
+  const [isEditUserOpen, setIsEditUserOpen] = useState(false)
+  const [isDeleteUserOpen, setIsDeleteUserOpen] = useState(false)
   const [isCreateRoleOpen, setIsCreateRoleOpen] = useState(false)
   const [isEditRoleOpen, setIsEditRoleOpen] = useState(false)
   const [isProposeConfigOpen, setIsProposeConfigOpen] = useState(false)
   const [isApproveConfigOpen, setIsApproveConfigOpen] = useState(false)
 
-  // Forms
+  // User Forms
   const [newUserName, setNewUserName] = useState('')
   const [newUserEmail, setNewUserEmail] = useState('')
   const [newUserPassword, setNewUserPassword] = useState('')
   const [newUserIsAdmin, setNewUserIsAdmin] = useState(false)
   const [newUserRoles, setNewUserRoles] = useState<string[]>(['operator'])
+
+  // Edit User State
+  const [selectedUserForEdit, setSelectedUserForEdit] =
+    useState<UserManagementItem | null>(null)
+  const [editUserName, setEditUserName] = useState('')
+  const [editUserEmail, setEditUserEmail] = useState('')
+  const [editUserPassword, setEditUserPassword] = useState('')
+  const [editUserIsAdmin, setEditUserIsAdmin] = useState(false)
+  const [editUserRoles, setEditUserRoles] = useState<string[]>([])
+
+  // Delete User State
+  const [selectedUserForDelete, setSelectedUserForDelete] =
+    useState<UserManagementItem | null>(null)
+  const [actionLoadingUserId, setActionLoadingUserId] = useState<string | null>(
+    null,
+  )
 
   const [newRoleName, setNewRoleName] = useState('')
   const [newRoleDescription, setNewRoleDescription] = useState('')
@@ -129,6 +152,127 @@ export function AdminDashboardView({
     } catch (err) {
       setErrorMessage(
         err instanceof Error ? err.message : 'Error creating user',
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // Handle Open Edit User
+  const handleOpenEditUser = (user: UserManagementItem) => {
+    setSelectedUserForEdit(user)
+    setEditUserName(user.name)
+    setEditUserEmail(user.email)
+    setEditUserPassword('')
+    setEditUserIsAdmin(user.isAdmin)
+    setEditUserRoles([...user.roles])
+    setErrorMessage(null)
+    setIsEditUserOpen(true)
+  }
+
+  // Handle Save Edit User
+  const handleSaveEditUser = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedUserForEdit) return
+    setIsSubmitting(true)
+    setErrorMessage(null)
+
+    try {
+      const res = await fetch(`/api/admin/users/${selectedUserForEdit.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editUserName,
+          email: editUserEmail,
+          password: editUserPassword || undefined,
+          isAdmin: editUserIsAdmin,
+          roleNames: editUserRoles,
+        }),
+      })
+
+      if (!res.ok) {
+        const err = (await res.json()) as { error?: string }
+        throw new Error(err.error || 'Failed to update user')
+      }
+
+      const data = (await res.json()) as { user: UserManagementItem }
+      setUsersList((prev) =>
+        prev.map((u) => (u.id === data.user.id ? data.user : u)),
+      )
+      setIsEditUserOpen(false)
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error ? err.message : 'Error updating user',
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // Handle Toggle Disable/Enable User
+  const handleToggleDisableUser = async (user: UserManagementItem) => {
+    const isCurrentlyDisabled = Boolean(user.disabledAt)
+    setActionLoadingUserId(user.id)
+    setErrorMessage(null)
+
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          disabled: !isCurrentlyDisabled,
+        }),
+      })
+
+      if (!res.ok) {
+        const err = (await res.json()) as { error?: string }
+        throw new Error(err.error || 'Failed to toggle user status')
+      }
+
+      const data = (await res.json()) as { user: UserManagementItem }
+      setUsersList((prev) =>
+        prev.map((u) => (u.id === data.user.id ? data.user : u)),
+      )
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error ? err.message : 'Error changing user status',
+      )
+    } finally {
+      setActionLoadingUserId(null)
+    }
+  }
+
+  // Handle Open Delete User Dialog
+  const handleOpenDeleteUser = (user: UserManagementItem) => {
+    setSelectedUserForDelete(user)
+    setErrorMessage(null)
+    setIsDeleteUserOpen(true)
+  }
+
+  // Handle Confirm Delete User
+  const handleConfirmDeleteUser = async () => {
+    if (!selectedUserForDelete) return
+    setIsSubmitting(true)
+    setErrorMessage(null)
+
+    try {
+      const res = await fetch(`/api/admin/users/${selectedUserForDelete.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!res.ok) {
+        const err = (await res.json()) as { error?: string }
+        throw new Error(err.error || 'Failed to delete user')
+      }
+
+      setUsersList((prev) =>
+        prev.filter((u) => u.id !== selectedUserForDelete.id),
+      )
+      setIsDeleteUserOpen(false)
+      setSelectedUserForDelete(null)
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error ? err.message : 'Error deleting user',
       )
     } finally {
       setIsSubmitting(false)
@@ -392,41 +536,130 @@ export function AdminDashboardView({
                     <th className="p-3">Email</th>
                     <th className="p-3">Assigned Roles</th>
                     <th className="p-3">Admin Status</th>
+                    <th className="p-3">Status</th>
                     <th className="p-3">Created</th>
+                    <th className="p-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {usersList.map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-50/50">
-                      <td className="p-3 font-bold text-slate-900">{u.name}</td>
-                      <td className="p-3 text-slate-600">{u.email}</td>
-                      <td className="p-3">
-                        <div className="flex flex-wrap gap-1">
-                          {u.roles.map((r) => (
-                            <Badge
-                              key={r}
-                              variant="outline"
-                              className="border-slate-200 bg-slate-50 text-[10px] text-slate-700"
-                            >
-                              {r}
+                  {usersList.map((u) => {
+                    const isDisabled = Boolean(u.disabledAt)
+                    const isLoading = actionLoadingUserId === u.id
+
+                    return (
+                      <tr
+                        key={u.id}
+                        className={`hover:bg-slate-50/50 ${
+                          isDisabled ? 'bg-slate-50/70 opacity-75' : ''
+                        }`}
+                      >
+                        <td className="p-3 font-bold text-slate-900">
+                          {u.name}
+                          {isDisabled && (
+                            <span className="ml-2 text-[10px] font-normal text-rose-600">
+                              (Disabled)
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-slate-600">{u.email}</td>
+                        <td className="p-3">
+                          <div className="flex flex-wrap gap-1">
+                            {u.roles.map((r) => (
+                              <Badge
+                                key={r}
+                                variant="outline"
+                                className="border-slate-200 bg-slate-50 text-[10px] text-slate-700"
+                              >
+                                {r}
+                              </Badge>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          {u.isAdmin ? (
+                            <Badge className="border-purple-200 bg-purple-100 text-[10px] font-bold text-purple-800">
+                              Administrator
                             </Badge>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        {u.isAdmin ? (
-                          <Badge className="border-purple-200 bg-purple-100 text-[10px] font-bold text-purple-800">
-                            Administrator
-                          </Badge>
-                        ) : (
-                          <span className="text-slate-400">Standard</span>
-                        )}
-                      </td>
-                      <td className="p-3 font-mono text-[10px] text-slate-400">
-                        {new Date(u.createdAt).toLocaleDateString()}
-                      </td>
-                    </tr>
-                  ))}
+                          ) : (
+                            <span className="text-slate-400">Standard</span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          {isDisabled ? (
+                            <Badge
+                              variant="outline"
+                              className="border-rose-200 bg-rose-50 text-[10px] font-bold text-rose-700"
+                            >
+                              Disabled
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="border-emerald-200 bg-emerald-50 text-[10px] font-bold text-emerald-700"
+                            >
+                              Active
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="p-3 font-mono text-[10px] text-slate-400">
+                          {new Date(u.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenEditUser(u)}
+                              className="h-7 px-2 text-[11px] text-slate-700 hover:text-blue-600"
+                              title="Edit user details and roles"
+                            >
+                              <Pencil className="mr-1 h-3 w-3" />
+                              Edit
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={isLoading}
+                              onClick={() => handleToggleDisableUser(u)}
+                              className={`h-7 px-2 text-[11px] ${
+                                isDisabled
+                                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                  : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                              }`}
+                              title={
+                                isDisabled ? 'Enable user login' : 'Disable user login'
+                              }
+                            >
+                              {isLoading ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : isDisabled ? (
+                                <>
+                                  <UserCheck className="mr-1 h-3 w-3" />
+                                  Enable
+                                </>
+                              ) : (
+                                <>
+                                  <UserX className="mr-1 h-3 w-3" />
+                                  Disable
+                                </>
+                              )}
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenDeleteUser(u)}
+                              className="h-7 px-2 text-[11px] text-rose-600 hover:border-rose-300 hover:bg-rose-50"
+                              title="Delete user"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1114,10 +1347,183 @@ export function AdminDashboardView({
                 size="sm"
                 className="bg-emerald-600 text-xs font-semibold hover:bg-emerald-700"
               >
-                {isSubmitting ? 'Activating...' : 'Approve &amp; Activate'}
+                {isSubmitting ? 'Activating...' : 'Approve & Activate'}
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Modal */}
+      <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
+        <DialogContent className="sm:max-w-md">
+          <form onSubmit={handleSaveEditUser}>
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold">
+                Edit User Details &amp; Access
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Update account profile, role assignments, or reset password.
+              </DialogDescription>
+            </DialogHeader>
+
+            {errorMessage && (
+              <div className="mt-3 flex items-center gap-2 rounded-md bg-red-50 p-2.5 text-xs text-red-700">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
+            <div className="space-y-3 py-4 text-xs">
+              <div>
+                <label className="font-semibold text-slate-700">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editUserName}
+                  onChange={(e) => setEditUserName(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-slate-200 p-2 text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={editUserEmail}
+                  onChange={(e) => setEditUserEmail(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-slate-200 p-2 text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700">
+                  Reset Password (Optional)
+                </label>
+                <input
+                  type="password"
+                  value={editUserPassword}
+                  onChange={(e) => setEditUserPassword(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-slate-200 p-2 text-xs"
+                  placeholder="Leave blank to keep existing password"
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700">
+                  Assign Roles
+                </label>
+                <div className="mt-1 grid max-h-32 grid-cols-2 gap-2 overflow-y-auto rounded-md border border-slate-200 p-2">
+                  {rolesList.map((r) => {
+                    const isChecked = editUserRoles.includes(r.name)
+                    return (
+                      <label
+                        key={r.id}
+                        className="flex cursor-pointer items-center gap-1.5"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setEditUserRoles([...editUserRoles, r.name])
+                            } else {
+                              setEditUserRoles(
+                                editUserRoles.filter((name) => name !== r.name),
+                              )
+                            }
+                          }}
+                        />
+                        <span>{r.name}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="editIsAdmin"
+                  checked={editUserIsAdmin}
+                  onChange={(e) => setEditUserIsAdmin(e.target.checked)}
+                />
+                <label htmlFor="editIsAdmin" className="font-bold text-slate-800">
+                  Grant Full Administrator Privilege
+                </label>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditUserOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                size="sm"
+                className="bg-blue-600 text-xs font-semibold hover:bg-blue-700"
+              >
+                {isSubmitting ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Confirmation Dialog */}
+      <Dialog open={isDeleteUserOpen} onOpenChange={setIsDeleteUserOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-rose-700">
+              Confirm Permanent User Deletion
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Are you sure you want to permanently delete user{' '}
+              <strong className="text-slate-900">
+                {selectedUserForDelete?.name}
+              </strong>{' '}
+              ({selectedUserForDelete?.email})? This action will remove their
+              access and role assignments immediately.
+            </DialogDescription>
+          </DialogHeader>
+
+          {errorMessage && (
+            <div className="mt-3 flex items-center gap-2 rounded-md bg-red-50 p-2.5 text-xs text-red-700">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          <DialogFooter className="mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsDeleteUserOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={isSubmitting}
+              onClick={handleConfirmDeleteUser}
+              size="sm"
+              className="bg-rose-600 text-xs font-semibold hover:bg-rose-700"
+            >
+              {isSubmitting ? 'Deleting...' : 'Delete User Permanently'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

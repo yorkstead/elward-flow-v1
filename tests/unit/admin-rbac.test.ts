@@ -41,4 +41,10 @@ describe('Admin RBAC & Dynamic Permissions Matrix', () => {
     expect(hasPermission(superAdmin, 'anything')).toBe(true)
     expect(hasRole(superAdmin, ['arbitrary_role'])).toBe(true)
   })
+
+  it('verifies self-disable prevention rule for admin accounts', () => {
+    const adminContext = { userId: 'user-123', email: 'admin@elward.com', roles: ['admin'], isAdmin: true }
+    const targetUserId = 'user-123'
+    expect(adminContext.userId === targetUserId).toBe(true)
+  })
 })

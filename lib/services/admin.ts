@@ -184,6 +184,182 @@ export class AdminService {
   }
 
   /**
+   * Updates user details, password, admin status, roles, or disabled state.
+   */
+  static async updateUser(
+    context: UserContext,
+    userId: string,
+    input: {
+      name?: string
+      email?: string
+      password?: string
+      isAdmin?: boolean
+      roleNames?: string[]
+      disabled?: boolean
+    },
+  ): Promise<UserManagementItem> {
+    requirePermission(context, 'administer', 'updateUser')
+    const orgId =
+      context.organizationId || '00000000-0000-0000-0000-000000000001'
+
+    const [existing] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.id, userId), eq(users.organizationId, orgId)))
+      .limit(1)
+
+    if (!existing) {
+      throw new Error(`User not found with id: ${userId}`)
+    }
+
+    if (input.email && input.email.trim().toLowerCase() !== existing.email) {
+      const emailConflict = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, input.email.trim().toLowerCase()))
+        .limit(1)
+      if (emailConflict.length > 0) {
+        throw new Error(`A user with email ${input.email} already exists.`)
+      }
+    }
+
+    const updates: Partial<{
+      name: string
+      email: string
+      passwordHash: string
+      isAdmin: boolean
+      disabledAt: Date | null
+      updatedAt: Date
+    }> = {
+      updatedAt: new Date(),
+    }
+
+    if (input.name !== undefined) updates.name = input.name.trim()
+    if (input.email !== undefined) updates.email = input.email.trim().toLowerCase()
+    if (input.isAdmin !== undefined) updates.isAdmin = Boolean(input.isAdmin)
+    if (input.password && input.password.trim().length > 0) {
+      updates.passwordHash = await hashPassword(input.password)
+    }
+    if (input.disabled !== undefined) {
+      if (userId === context.userId && input.disabled) {
+        throw new Error('Cannot disable your own administrator account.')
+      }
+      updates.disabledAt = input.disabled ? new Date() : null
+    }
+
+    const [updatedUser] = await db
+      .update(users)
+      .set(updates)
+      .where(eq(users.id, userId))
+      .returning()
+
+    if (input.roleNames !== undefined) {
+      const dbRoles = await db
+        .select()
+        .from(roles)
+        .where(inArray(roles.name, input.roleNames))
+
+      await db.transaction(async (tx) => {
+        await tx.delete(userRoles).where(eq(userRoles.userId, userId))
+        for (const r of dbRoles) {
+          await tx.insert(userRoles).values({
+            userId,
+            roleId: r.id,
+          })
+        }
+      })
+    }
+
+    // Get current assigned roles
+    const userRoleRows = await db
+      .select({ roleName: roles.name })
+      .from(userRoles)
+      .innerJoin(roles, eq(userRoles.roleId, roles.id))
+      .where(eq(userRoles.userId, userId))
+
+    const assignedRoles = userRoleRows.map((r) => r.roleName)
+
+    await recordAuditEvent(context, {
+      action: 'admin.update_user',
+      entityType: 'user',
+      entityId: userId,
+      details: {
+        updatedFields: Object.keys(updates),
+        roles: assignedRoles,
+      },
+    })
+
+    return {
+      id: updatedUser.id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      isAdmin: updatedUser.isAdmin,
+      disabledAt: updatedUser.disabledAt ? updatedUser.disabledAt.toISOString() : null,
+      createdAt: updatedUser.createdAt.toISOString(),
+      roles: assignedRoles,
+    }
+  }
+
+  /**
+   * Toggles active / disabled state of a user.
+   */
+  static async toggleUserDisabled(
+    context: UserContext,
+    userId: string,
+    disable: boolean,
+  ): Promise<UserManagementItem> {
+    requirePermission(context, 'administer', 'toggleUserDisabled')
+    if (userId === context.userId && disable) {
+      throw new Error('Cannot disable your own administrator account.')
+    }
+
+    return this.updateUser(context, userId, { disabled: disable })
+  }
+
+  /**
+   * Permanently deletes a user from the organization.
+   */
+  static async deleteUser(
+    context: UserContext,
+    userId: string,
+  ): Promise<{ success: boolean; deletedUserId: string }> {
+    requirePermission(context, 'administer', 'deleteUser')
+    if (userId === context.userId) {
+      throw new Error('Cannot delete your own administrator account.')
+    }
+
+    const orgId =
+      context.organizationId || '00000000-0000-0000-0000-000000000001'
+
+    const [existing] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.id, userId), eq(users.organizationId, orgId)))
+      .limit(1)
+
+    if (!existing) {
+      throw new Error(`User not found with id: ${userId}`)
+    }
+
+    await db.transaction(async (tx) => {
+      await tx.delete(userRoles).where(eq(userRoles.userId, userId))
+      await tx.delete(users).where(eq(users.id, userId))
+    })
+
+    await recordAuditEvent(context, {
+      action: 'admin.delete_user',
+      entityType: 'user',
+      entityId: userId,
+      details: {
+        deletedUserName: existing.name,
+        deletedUserEmail: existing.email,
+      },
+    })
+
+    return { success: true, deletedUserId: userId }
+  }
+
+  /**
    * Assigns roles to an existing user.
    */
   static async assignUserRoles(
