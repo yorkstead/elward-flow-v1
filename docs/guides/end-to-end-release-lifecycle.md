@@ -54,13 +54,13 @@ Ensure all sheet stock, extrusions, and hardware are allocated and available bef
 Route panels through machines and assembly workcells with 2-3 tap mobile scanning.
 
 1. **Dispatch Production Schedule (`/production` ➔ Schedule)**:
-   - Supervisors dispatch workstep queues for **CNC Routing**, **ELU Sawing**, **Brake Forming**, and **Assembly**.
+   - Supervisors dispatch workstep queues for **CNC Routing**, **ELU Cutting**, **Parts Prep**, **Assembly**, and **Packaging**.
 2. **Perform First-Off Machine Inspection**:
    - At CNC/ELU stations, operators run the first panel and record Caliper/Squareness verification to unblock batch runs.
 3. **Shop-Floor QR/Barcode Scanning (`/scan`)**:
    - Operator scans panel mark barcode (e.g. `54120-1-P101`).
    - The scanner resolves the active revision and presents only valid next operations.
-   - Tap **Advance Station** (e.g. Move from _CNC_ to _Forming_ to _Assembly_).
+   - Tap **Advance Station** (e.g. Move from _CNC_ to _Parts Prep_ to _Assembly_ to _Packaging_).
    - _Obsolete Revision Protection_: If an old revision tag is scanned, the app blocks the scan with an audible warning and points to the current active revision.
 4. **Log Downtime (`/production` ➔ Downtime Tracker)**:
    - If a machine stops (tool change, maintenance, material wait), log the category and duration.

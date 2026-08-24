@@ -544,8 +544,8 @@ export function InspectionLedgerTable({
                         <SelectItem value="Dimensional Discrepancy">
                           Dimensional Discrepancy
                         </SelectItem>
-                        <SelectItem value="Bending/Routing Error">
-                          Bending / Routing Error
+                        <SelectItem value="Machining / Routing Error">
+                          Machining / Routing Error
                         </SelectItem>
                         <SelectItem value="Hardware/Assembly Defect">
                           Hardware / Assembly Defect

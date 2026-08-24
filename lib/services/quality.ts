@@ -22,7 +22,7 @@ export type QualityDisposition =
 export type QualityIssueCategory =
   | 'Surface Defect'
   | 'Dimensional Discrepancy'
-  | 'Bending/Routing Error'
+  | 'Machining / Routing Error'
   | 'Hardware/Assembly Defect'
   | 'Material Flaw'
   | 'Drawing Discrepancy'

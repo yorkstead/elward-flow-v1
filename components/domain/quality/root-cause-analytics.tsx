@@ -29,7 +29,7 @@ export function RootCauseAnalytics({ issues }: RootCauseAnalyticsProps) {
   const categoryCounts: Record<string, number> = {
     'Surface Defect': 0,
     'Dimensional Discrepancy': 0,
-    'Bending/Routing Error': 0,
+    'Machining / Routing Error': 0,
     'Hardware/Assembly Defect': 0,
     'Material Flaw': 0,
     'Handling Damage': 0,

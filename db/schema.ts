@@ -921,7 +921,7 @@ export const qualityIssues = pgTable('quality_issues', {
     .notNull()
     .references(() => organizations.id, { onDelete: 'cascade' }),
   issueNumber: text('issue_number').notNull(),
-  category: text('category').notNull(), // 'Surface Defect' | 'Dimensional Discrepancy' | 'Bending/Routing Error' | 'Hardware/Assembly Defect' | 'Material Flaw' | 'Drawing Discrepancy' | 'Handling Damage' | 'Other'
+  category: text('category').notNull(), // 'Surface Defect' | 'Dimensional Discrepancy' | 'Machining / Routing Error' | 'Hardware/Assembly Defect' | 'Material Flaw' | 'Drawing Discrepancy' | 'Handling Damage' | 'Other'
   severity: text('severity').notNull().default('Moderate'), // 'Minor' | 'Moderate' | 'Critical' | 'Blocking'
   detectionPoint: text('detection_point').notNull(), // 'QC Final Inspection' | 'Assembly Bay' | 'CNC Routing'
   suspectedCause: text('suspected_cause'),
