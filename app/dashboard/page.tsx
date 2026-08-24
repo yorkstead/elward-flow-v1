@@ -54,34 +54,38 @@ export default async function DashboardPage(props: PageProps) {
   const searchParams = await props.searchParams
 
   const organizationId = session?.user?.organizationId
-  if (!organizationId) {
-    return <div className="p-8 text-center text-slate-500">Unauthorized</div>
+  if (!organizationId || organizationId === 'undefined') {
+    return (
+      <div className="p-8 text-center text-slate-500">
+        Unauthorized or user organization not configured.
+      </div>
+    )
   }
 
-  const [mostRecentRelease] = searchParams.job
-    ? []
-    : await db
-        .select({
-          jobNumber: productionJobs.jobNumber,
-          releaseNumber: releases.releaseNumber,
-        })
-        .from(releases)
-        .innerJoin(productionJobs, eq(releases.jobId, productionJobs.id))
-        .where(eq(releases.organizationId, organizationId))
-        .orderBy(desc(releases.updatedAt))
-        .limit(1)
+  const [mostRecentRelease] = await db
+    .select({
+      jobNumber: productionJobs.jobNumber,
+      releaseNumber: releases.releaseNumber,
+    })
+    .from(releases)
+    .innerJoin(productionJobs, eq(releases.jobId, productionJobs.id))
+    .where(eq(releases.organizationId, organizationId))
+    .orderBy(desc(releases.updatedAt))
+    .limit(1)
 
-  if (!searchParams.job && !mostRecentRelease) {
+  const targetJobNumber = searchParams.job || mostRecentRelease?.jobNumber
+
+  if (!targetJobNumber) {
     return <FirstRunDashboard />
   }
 
-  const targetJobNumber = searchParams.job || mostRecentRelease.jobNumber
   const parsedReleaseNumber = searchParams.release
     ? Number.parseInt(searchParams.release, 10)
-    : mostRecentRelease.releaseNumber
-  const targetReleaseNumber = Number.isInteger(parsedReleaseNumber)
-    ? parsedReleaseNumber
-    : 1
+    : mostRecentRelease?.releaseNumber ?? 1
+  const targetReleaseNumber =
+    Number.isInteger(parsedReleaseNumber) && parsedReleaseNumber > 0
+      ? parsedReleaseNumber
+      : 1
 
   // 1. Fetch Production Job & Associated Customer / Project
   const [jobRecord] = await db
@@ -114,6 +118,14 @@ export default async function DashboardPage(props: PageProps) {
         <p className="text-sm text-slate-500">
           The requested job does not exist in this organization.
         </p>
+        <div className="flex justify-center gap-3 pt-2">
+          <Link href="/releases/intake">
+            <Button>Start Release Intake</Button>
+          </Link>
+          <Link href="/releases">
+            <Button variant="outline">View All Releases</Button>
+          </Link>
+        </div>
       </div>
     )
   }
@@ -146,7 +158,14 @@ export default async function DashboardPage(props: PageProps) {
         <p className="text-sm text-slate-600">
           The requested release does not exist in this organization.
         </p>
-        <Button render={<Link href="/dashboard" />}>Open active release</Button>
+        <div className="flex justify-center gap-3 pt-2">
+          <Link href="/dashboard">
+            <Button>Open Active Release</Button>
+          </Link>
+          <Link href="/releases">
+            <Button variant="outline">View All Releases</Button>
+          </Link>
+        </div>
       </div>
     )
   }

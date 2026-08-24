@@ -64,7 +64,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     session({ session, token }) {
       if (session.user) {
         session.user.id = String(token.userId ?? token.sub)
-        session.user.organizationId = String(token.organizationId)
+        session.user.organizationId = token.organizationId
+          ? String(token.organizationId)
+          : ''
         session.user.siteId = token.siteId ? String(token.siteId) : null
         session.user.isAdmin = Boolean(token.isAdmin)
         session.user.roles = Array.isArray(token.roles) ? token.roles : []
