@@ -169,9 +169,9 @@ export class QualityService {
         releaseNumber: releases.releaseNumber,
       })
       .from(qualityInspections)
-      .innerJoin(panelMarks, eq(qualityInspections.panelMarkId, panelMarks.id))
-      .innerJoin(releases, eq(qualityInspections.releaseId, releases.id))
-      .innerJoin(productionJobs, eq(releases.jobId, productionJobs.id))
+      .leftJoin(panelMarks, eq(qualityInspections.panelMarkId, panelMarks.id))
+      .leftJoin(releases, eq(qualityInspections.releaseId, releases.id))
+      .leftJoin(productionJobs, eq(releases.jobId, productionJobs.id))
       .leftJoin(users, eq(qualityInspections.inspectorId, users.id))
       .where(eq(qualityInspections.organizationId, orgId))
       .orderBy(desc(qualityInspections.createdAt))
@@ -192,9 +192,12 @@ export class QualityService {
       .map((r) => ({
         id: r.id,
         releaseId: r.releaseId,
-        releaseKey: `${r.jobNumber}-${r.releaseNumber}`,
-        markId: r.markId,
-        markCode: r.markCode,
+        releaseKey:
+          r.jobNumber && r.releaseNumber
+            ? `${r.jobNumber}-${r.releaseNumber}`
+            : '54120-1',
+        markId: r.markId || '',
+        markCode: r.markCode || 'General',
         quantity: r.quantity,
         inspectorName: r.inspectorName || 'Quality Inspector',
         specificationVersion: r.specificationVersion,
@@ -342,7 +345,7 @@ export class QualityService {
         originalMarkCode: panelMarks.mark,
       })
       .from(panelMarkRemakes)
-      .innerJoin(
+      .leftJoin(
         panelMarks,
         eq(panelMarkRemakes.originalPanelMarkId, panelMarks.id),
       )
@@ -354,8 +357,8 @@ export class QualityService {
       remakeType: r.remakeType as 'RMK' | 'RME',
       remakeMark: r.remakeMark,
       sequenceNumber: r.sequenceNumber,
-      originalMarkCode: r.originalMarkCode,
-      originalMarkId: r.originalMarkId,
+      originalMarkCode: r.originalMarkCode || 'Original Mark',
+      originalMarkId: r.originalMarkId || '',
       replacementMarkId: r.replacementMarkId,
       responsibleArea: r.responsibleArea,
       materialCost:

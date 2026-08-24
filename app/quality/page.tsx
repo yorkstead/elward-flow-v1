@@ -2,8 +2,13 @@ import { auth, signOut } from '@/auth'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/domain/app-shell'
 import { db } from '@/db'
-import { panelMarks, releases, productionJobs } from '@/db/schema'
-import { eq } from 'drizzle-orm'
+import {
+  panelMarks,
+  releases,
+  productionJobs,
+  releaseRevisions,
+} from '@/db/schema'
+import { eq, and, desc } from 'drizzle-orm'
 import { QualityService } from '@/lib/services/quality'
 import { QualityDashboardView } from '@/components/domain/quality/quality-dashboard-view'
 
@@ -23,8 +28,8 @@ export default async function QualityPage() {
     isAdmin: session.user.isAdmin,
   }
 
-  // 1. Fetch default Release 54120-1
-  const [targetRelease] = await db
+  // 1. Fetch default Release (Job 54120 or first available release)
+  let [targetRelease] = await db
     .select({
       id: releases.id,
       releaseNumber: releases.releaseNumber,
@@ -34,6 +39,20 @@ export default async function QualityPage() {
     .innerJoin(productionJobs, eq(releases.jobId, productionJobs.id))
     .where(eq(productionJobs.jobNumber, '54120'))
     .limit(1)
+
+  if (!targetRelease) {
+    const [firstRel] = await db
+      .select({
+        id: releases.id,
+        releaseNumber: releases.releaseNumber,
+        jobNumber: productionJobs.jobNumber,
+      })
+      .from(releases)
+      .innerJoin(productionJobs, eq(releases.jobId, productionJobs.id))
+      .orderBy(desc(releases.createdAt))
+      .limit(1)
+    targetRelease = firstRel
+  }
 
   const activeReleaseId = targetRelease?.id || ''
   const activeReleaseKey = targetRelease
@@ -50,28 +69,45 @@ export default async function QualityPage() {
   const remakes = await QualityService.getRemakes(context)
 
   // 5. Fetch Marks for Release
-  const marks = await db
-    .select({
-      id: panelMarks.id,
-      mark: panelMarks.mark,
-      materialFamily: panelMarks.materialFamily,
-      color: panelMarks.color,
-    })
-    .from(panelMarks)
-    .where(
-      eq(panelMarks.organizationId, targetRelease?.id ? targetRelease.id : ''),
-    )
+  let marks: Array<{
+    id: string
+    mark: string
+    materialFamily: string
+    color: string | null
+  }> = []
 
-  // Fallback query if marks query by orgId
-  const allMarks = await db
-    .select({
-      id: panelMarks.id,
-      mark: panelMarks.mark,
-      materialFamily: panelMarks.materialFamily,
-      color: panelMarks.color,
-    })
-    .from(panelMarks)
-    .limit(20)
+  if (targetRelease?.id) {
+    marks = await db
+      .select({
+        id: panelMarks.id,
+        mark: panelMarks.mark,
+        materialFamily: panelMarks.materialFamily,
+        color: panelMarks.color,
+      })
+      .from(panelMarks)
+      .innerJoin(
+        releaseRevisions,
+        eq(panelMarks.releaseRevisionId, releaseRevisions.id),
+      )
+      .where(
+        and(
+          eq(releaseRevisions.releaseId, targetRelease.id),
+          eq(releaseRevisions.isCurrent, true),
+        ),
+      )
+  }
+
+  if (marks.length === 0) {
+    marks = await db
+      .select({
+        id: panelMarks.id,
+        mark: panelMarks.mark,
+        materialFamily: panelMarks.materialFamily,
+        color: panelMarks.color,
+      })
+      .from(panelMarks)
+      .limit(50)
+  }
 
   const canViewCost =
     session.user.isAdmin ||
@@ -95,7 +131,7 @@ export default async function QualityPage() {
           initialInspections={inspections}
           initialIssues={issues}
           initialRemakes={remakes}
-          marks={marks.length > 0 ? marks : allMarks}
+          marks={marks}
           activeReleaseKey={activeReleaseKey}
           activeReleaseId={activeReleaseId}
           canViewCost={canViewCost}
