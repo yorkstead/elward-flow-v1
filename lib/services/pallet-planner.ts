@@ -29,6 +29,92 @@ import {
   PALLET_PLANNER_VERSION,
 } from '@/lib/domain/palletization'
 
+let schemaChecked = false
+export async function ensurePalletSchemaApplied(): Promise<void> {
+  if (schemaChecked) return
+  try {
+    await db.execute(sql`
+      DO $$ BEGIN
+        CREATE TYPE "public"."pallet_plan_status" AS ENUM('Draft', 'Review', 'Approved', 'Applied', 'Superseded', 'Cancelled');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+
+      ALTER TABLE "panel_marks" ADD COLUMN IF NOT EXISTS "elevation" text;
+      ALTER TABLE "panel_marks" ADD COLUMN IF NOT EXISTS "source_metadata" jsonb;
+
+      ALTER TABLE "pallets" ADD COLUMN IF NOT EXISTS "pallet_plan_id" uuid;
+      ALTER TABLE "pallets" ADD COLUMN IF NOT EXISTS "elevations" jsonb DEFAULT '[]'::jsonb NOT NULL;
+      ALTER TABLE "pallets" ADD COLUMN IF NOT EXISTS "width_inches" numeric(10, 2);
+      ALTER TABLE "pallets" ADD COLUMN IF NOT EXISTS "length_inches" numeric(10, 2);
+      ALTER TABLE "pallets" ADD COLUMN IF NOT EXISTS "border_inches" numeric(10, 2);
+
+      ALTER TABLE "pallet_items" ADD COLUMN IF NOT EXISTS "elevation" text;
+      ALTER TABLE "pallet_items" ADD COLUMN IF NOT EXISTS "calculated_weight" numeric(10, 2);
+      ALTER TABLE "pallet_items" ADD COLUMN IF NOT EXISTS "calculated_height" numeric(10, 2);
+
+      CREATE TABLE IF NOT EXISTS "pallet_plans" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+        "organization_id" uuid NOT NULL,
+        "release_id" uuid NOT NULL,
+        "release_revision_id" uuid NOT NULL,
+        "status" "pallet_plan_status" DEFAULT 'Draft' NOT NULL,
+        "algorithm_version" text DEFAULT '1.0.0' NOT NULL,
+        "generated_by_id" uuid,
+        "generated_at" timestamp with time zone DEFAULT now() NOT NULL,
+        "approved_by_id" uuid,
+        "approved_at" timestamp with time zone,
+        "applied_by_id" uuid,
+        "applied_at" timestamp with time zone,
+        "superseded_at" timestamp with time zone,
+        "warnings" jsonb DEFAULT '[]'::jsonb NOT NULL,
+        "metadata" jsonb DEFAULT '{}'::jsonb NOT NULL,
+        "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+        "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS "pallet_plan_pallets" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+        "organization_id" uuid NOT NULL,
+        "pallet_plan_id" uuid NOT NULL,
+        "sequence" integer DEFAULT 1 NOT NULL,
+        "planned_pallet_number" text NOT NULL,
+        "width_inches" numeric(10, 2) DEFAULT '0.00' NOT NULL,
+        "length_inches" numeric(10, 2) DEFAULT '0.00' NOT NULL,
+        "height_inches" numeric(10, 2) DEFAULT '0.00' NOT NULL,
+        "weight_lbs" numeric(10, 2) DEFAULT '0.00' NOT NULL,
+        "border_inches" numeric(10, 2) DEFAULT '4.00' NOT NULL,
+        "elevations" jsonb DEFAULT '[]'::jsonb NOT NULL,
+        "material_families" jsonb DEFAULT '[]'::jsonb NOT NULL,
+        "panel_count" integer DEFAULT 0 NOT NULL,
+        "notes" text,
+        "warnings" jsonb DEFAULT '[]'::jsonb NOT NULL,
+        "overrides" jsonb DEFAULT '[]'::jsonb NOT NULL,
+        "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+        "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS "pallet_plan_items" (
+        "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+        "organization_id" uuid NOT NULL,
+        "pallet_plan_pallet_id" uuid NOT NULL,
+        "panel_mark_id" uuid NOT NULL,
+        "quantity" integer DEFAULT 1 NOT NULL,
+        "sequence" integer DEFAULT 1 NOT NULL,
+        "elevation" text,
+        "calculated_weight" numeric(10, 2),
+        "calculated_height" numeric(10, 2),
+        "source_metadata" jsonb DEFAULT '{}'::jsonb NOT NULL,
+        "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+        "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+      );
+    `)
+    schemaChecked = true
+  } catch (err) {
+    console.error('Pallet schema auto-migration notice:', err)
+  }
+}
+
 export interface PalletPlanSummary {
   id: string
   releaseId: string
@@ -73,6 +159,8 @@ export class PalletPlannerService {
     requirePermission(context, 'create', 'generatePalletPlan')
     const orgId =
       context.organizationId || '00000000-0000-0000-0000-000000000001'
+
+    await ensurePalletSchemaApplied()
 
     // 1. Fetch Release & Current Active Revision
     const [release] = await db
@@ -296,6 +384,8 @@ export class PalletPlannerService {
     const orgId =
       context.organizationId || '00000000-0000-0000-0000-000000000001'
 
+    await ensurePalletSchemaApplied()
+
     const [plan] = await db
       .select({
         id: palletPlans.id,
@@ -487,6 +577,8 @@ export class PalletPlannerService {
   ): Promise<PalletPlanSummary[]> {
     const orgId =
       context.organizationId || '00000000-0000-0000-0000-000000000001'
+
+    await ensurePalletSchemaApplied()
 
     const rows = await db
       .select({

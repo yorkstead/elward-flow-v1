@@ -17,7 +17,7 @@ import {
 } from '@/db/schema'
 import { eq, and, sql } from 'drizzle-orm'
 import { DomainService } from './domain'
-import { PalletPlannerService } from './pallet-planner'
+import { PalletPlannerService, ensurePalletSchemaApplied } from './pallet-planner'
 import type { ParsedPanelMarkInput, IntakeFileItem } from './intake'
 
 export interface ImpactDispositionInput {
@@ -233,6 +233,8 @@ export class RevisionControlService {
         )
       }
     }
+
+    await ensurePalletSchemaApplied()
 
     return await db.transaction(async (tx) => {
       // Find or create customer
