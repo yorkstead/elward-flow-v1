@@ -41,6 +41,7 @@ import {
 } from '@/components/domain/release/activity-stream'
 import { FirstRunDashboard } from '@/components/domain/dashboard/first-run-dashboard'
 import { Button } from '@/components/ui/button'
+import { ensurePalletSchemaApplied } from '@/lib/services/pallet-planner'
 
 interface PageProps {
   searchParams: Promise<{
@@ -58,6 +59,8 @@ export default async function DashboardPage(props: PageProps) {
     if (!organizationId || organizationId === 'undefined') {
       return <FirstRunDashboard />
     }
+
+    await ensurePalletSchemaApplied()
 
     const [mostRecentRelease] = await db
       .select({

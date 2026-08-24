@@ -13,6 +13,7 @@ import {
 import { eq, desc } from 'drizzle-orm'
 import { InventoryService } from '@/lib/services/inventory'
 import { InventoryDashboardView } from '@/components/domain/inventory/inventory-dashboard-view'
+import { ensureSystemFoundationPopulated } from '@/lib/services/system-init'
 
 export default async function InventoryPage() {
   const session = await auth()
@@ -22,6 +23,8 @@ export default async function InventoryPage() {
     'use server'
     await signOut({ redirectTo: '/sign-in' })
   }
+
+  await ensureSystemFoundationPopulated(session.user.organizationId)
 
   const context = {
     userId: session.user.id,

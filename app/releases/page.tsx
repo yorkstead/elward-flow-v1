@@ -13,6 +13,7 @@ import {
 } from '@/db/schema'
 import { eq, desc, and } from 'drizzle-orm'
 import { Upload, FileDown, ArrowRight } from 'lucide-react'
+import { ensurePalletSchemaApplied } from '@/lib/services/pallet-planner'
 
 export const metadata = {
   title: 'Production Releases | Elward Flow',
@@ -45,6 +46,7 @@ export default async function ReleasesPage() {
   }[] = []
 
   try {
+    await ensurePalletSchemaApplied()
     const orgId = session.user.organizationId || '00000000-0000-0000-0000-000000000001'
     releaseList = await db
       .select({

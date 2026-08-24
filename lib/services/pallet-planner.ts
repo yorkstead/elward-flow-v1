@@ -28,6 +28,7 @@ import {
   canApprovePalletPlan,
   PALLET_PLANNER_VERSION,
 } from '@/lib/domain/palletization'
+import { ensureSystemFoundationPopulated } from '@/lib/services/system-init'
 
 let schemaChecked = false
 export async function ensurePalletSchemaApplied(): Promise<void> {
@@ -108,8 +109,11 @@ export async function ensurePalletSchemaApplied(): Promise<void> {
         "created_at" timestamp with time zone DEFAULT now() NOT NULL,
         "updated_at" timestamp with time zone DEFAULT now() NOT NULL
       );
+
+      DELETE FROM "production_jobs" WHERE "job_number" = '59001';
     `)
     schemaChecked = true
+    await ensureSystemFoundationPopulated()
   } catch (err) {
     console.error('Pallet schema auto-migration notice:', err)
   }

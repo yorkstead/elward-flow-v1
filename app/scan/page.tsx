@@ -5,6 +5,7 @@ import { ScanStation } from '@/components/domain/scanner/scan-station'
 import { db } from '@/db'
 import { workstations, movementEvents, users } from '@/db/schema'
 import { eq, desc } from 'drizzle-orm'
+import { ensureSystemFoundationPopulated } from '@/lib/services/system-init'
 
 export const metadata = {
   title: 'Scan Station | Elward Flow',
@@ -18,6 +19,8 @@ export default async function ScanPage() {
     'use server'
     await signOut({ redirectTo: '/sign-in' })
   }
+
+  await ensureSystemFoundationPopulated(session.user.organizationId)
 
   // Load active workstations
   const stationList = await db
