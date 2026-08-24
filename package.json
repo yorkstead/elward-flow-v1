@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "setup": "docker compose up -d --wait && bun run db:migrate && bun run seed",
-    "deps:up": "docker compose up -d --wait",
+    "deps:up": "docker compose up -d",
     "deps:down": "docker compose down",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
