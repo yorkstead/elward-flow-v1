@@ -44,15 +44,28 @@ export async function ensurePalletSchemaApplied(): Promise<void> {
       ALTER TABLE "panel_marks" ADD COLUMN IF NOT EXISTS "elevation" text;
       ALTER TABLE "panel_marks" ADD COLUMN IF NOT EXISTS "source_metadata" jsonb;
 
+      ALTER TABLE "pallets" ADD COLUMN IF NOT EXISTS "release_revision_id" uuid;
       ALTER TABLE "pallets" ADD COLUMN IF NOT EXISTS "pallet_plan_id" uuid;
-      ALTER TABLE "pallets" ADD COLUMN IF NOT EXISTS "elevations" jsonb DEFAULT '[]'::jsonb NOT NULL;
+      ALTER TABLE "pallets" ADD COLUMN IF NOT EXISTS "elevation" text;
+      ALTER TABLE "pallets" ADD COLUMN IF NOT EXISTS "elevations" jsonb DEFAULT '[]'::jsonb;
       ALTER TABLE "pallets" ADD COLUMN IF NOT EXISTS "width_inches" numeric(10, 2);
       ALTER TABLE "pallets" ADD COLUMN IF NOT EXISTS "length_inches" numeric(10, 2);
       ALTER TABLE "pallets" ADD COLUMN IF NOT EXISTS "border_inches" numeric(10, 2);
+      ALTER TABLE "pallets" ADD COLUMN IF NOT EXISTS "max_height_inches" numeric(10, 2) DEFAULT '60.00';
+      ALTER TABLE "pallets" ADD COLUMN IF NOT EXISTS "current_height_inches" numeric(10, 2) DEFAULT '0.00';
+      ALTER TABLE "pallets" ADD COLUMN IF NOT EXISTS "max_weight_lbs" numeric(10, 2) DEFAULT '3500.00';
+      ALTER TABLE "pallets" ADD COLUMN IF NOT EXISTS "current_weight_lbs" numeric(10, 2) DEFAULT '0.00';
+      ALTER TABLE "pallets" ADD COLUMN IF NOT EXISTS "panel_count" integer DEFAULT 0;
+      ALTER TABLE "pallets" ADD COLUMN IF NOT EXISTS "builder_id" uuid;
+      ALTER TABLE "pallets" ADD COLUMN IF NOT EXISTS "completed_at" timestamp with time zone;
+      ALTER TABLE "pallets" ADD COLUMN IF NOT EXISTS "notes" text;
 
+      ALTER TABLE "pallet_items" ADD COLUMN IF NOT EXISTS "sequence" integer DEFAULT 1;
       ALTER TABLE "pallet_items" ADD COLUMN IF NOT EXISTS "elevation" text;
       ALTER TABLE "pallet_items" ADD COLUMN IF NOT EXISTS "calculated_weight" numeric(10, 2);
       ALTER TABLE "pallet_items" ADD COLUMN IF NOT EXISTS "calculated_height" numeric(10, 2);
+      ALTER TABLE "pallet_items" ADD COLUMN IF NOT EXISTS "staged_at" timestamp with time zone DEFAULT now();
+      ALTER TABLE "pallet_items" ADD COLUMN IF NOT EXISTS "staged_by_id" uuid;
 
       CREATE TABLE IF NOT EXISTS "pallet_plans" (
         "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -731,6 +744,8 @@ export class PalletPlannerService {
     requirePermission(context, 'approve', 'applyPalletPlan')
     const orgId =
       context.organizationId || '00000000-0000-0000-0000-000000000001'
+
+    await ensurePalletSchemaApplied()
 
     const plan = await this.getPlanById(context, planId)
     if (!plan) throw new Error('Pallet plan not found')
