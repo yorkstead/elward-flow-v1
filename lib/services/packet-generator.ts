@@ -52,9 +52,15 @@ export const DEPARTMENT_PACKET_DEFINITIONS: Record<
     type: 'cnc',
     title: 'CNC Routing Execution Packet',
     department: 'CNC',
-    includedCategories: ['cnc_layout', 'cut_drawing', 'elevation', 'takeoff'],
+    includedCategories: [
+      'packing_list',
+      'cnc_layout',
+      'cut_drawing',
+      'elevation',
+      'takeoff',
+    ],
     description:
-      'Table nest layouts, G-code references, and cut drawing sheets',
+      'Table nest layouts, cut drawing sheets, and release packing lists',
   },
   elu: {
     type: 'elu',
@@ -66,16 +72,18 @@ export const DEPARTMENT_PACKET_DEFINITIONS: Record<
   },
   assembly: {
     type: 'assembly',
-    title: 'Assembly & Parts Packet',
-    department: 'Assembly',
+    title: 'Parts Prep & Assembly Packet',
+    department: 'Parts Prep / Assembly',
     includedCategories: [
+      'packing_list',
       'assembly_drawing',
+      'extrusion_cut_list',
       'accessory_list',
       'elevation',
       'cut_drawing',
     ],
     description:
-      'Assembly drawings, fastener schedules, and fabrication details',
+      'Assembly drawings, extrusion cut lists, packing lists, and accessory/priority schedules',
   },
   qc: {
     type: 'qc',

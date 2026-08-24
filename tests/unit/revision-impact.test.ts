@@ -19,18 +19,35 @@ describe('RevisionControlService & PacketGenerator', () => {
         expect(def.includedCategories.length).toBeGreaterThan(0)
       }
 
-      // CNC packet includes CNC layouts and cut drawings
+      // CNC packet includes CNC layouts, cut drawings, and packing lists
       expect(DEPARTMENT_PACKET_DEFINITIONS.cnc.includedCategories).toContain(
         'cnc_layout',
       )
       expect(DEPARTMENT_PACKET_DEFINITIONS.cnc.includedCategories).toContain(
         'cut_drawing',
       )
+      expect(DEPARTMENT_PACKET_DEFINITIONS.cnc.includedCategories).toContain(
+        'packing_list',
+      )
 
       // ELU packet includes extrusion cut lists
       expect(DEPARTMENT_PACKET_DEFINITIONS.elu.includedCategories).toContain(
         'extrusion_cut_list',
       )
+
+      // Parts Prep / Assembly packet includes assembly drawings, extrusion lists, packing lists, and accessory lists
+      expect(
+        DEPARTMENT_PACKET_DEFINITIONS.assembly.includedCategories,
+      ).toContain('assembly_drawing')
+      expect(
+        DEPARTMENT_PACKET_DEFINITIONS.assembly.includedCategories,
+      ).toContain('extrusion_cut_list')
+      expect(
+        DEPARTMENT_PACKET_DEFINITIONS.assembly.includedCategories,
+      ).toContain('packing_list')
+      expect(
+        DEPARTMENT_PACKET_DEFINITIONS.assembly.includedCategories,
+      ).toContain('accessory_list')
 
       // Shipping packet includes packing lists and shipping info
       expect(

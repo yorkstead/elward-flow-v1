@@ -87,12 +87,48 @@ describe('DocumentClassifier & Safe ZIP Extraction', () => {
       }
     })
 
-    it('classifies rail documents as optional accessory schedules', () => {
-      const result = DocumentClassifier.classify(
+    it('classifies elevation matrices and shop drawings', () => {
+      const result1 = DocumentClassifier.classify(
+        '54120-1_Elevation_Matrix.pdf',
+      )
+      expect(result1.category).toBe('elevation')
+      expect(result1.isUncertain).toBe(false)
+
+      const result2 = DocumentClassifier.classify('54120-1_Shop_Drawings.pdf')
+      expect(result2.category).toBe('elevation')
+      expect(result2.isUncertain).toBe(false)
+    })
+
+    it('classifies priority lists and accessory schedules', () => {
+      const result1 = DocumentClassifier.classify('54120-1_Priority_List.pdf')
+      expect(result1.category).toBe('accessory_list')
+      expect(result1.isUncertain).toBe(false)
+
+      const result2 = DocumentClassifier.classify(
         'FICTIONAL_PROJECT_RAILS_1.12.26.pdf',
       )
-      expect(result.category).toBe('accessory_list')
+      expect(result2.category).toBe('accessory_list')
+      expect(result2.isUncertain).toBe(false)
+    })
+
+    it('classifies parts prep drawings and assembly details', () => {
+      const result = DocumentClassifier.classify(
+        '54120-1_Parts_Prep_Detail.pdf',
+      )
+      expect(result.category).toBe('assembly_drawing')
       expect(result.isUncertain).toBe(false)
+    })
+
+    it('classifies packing slips, sheets, and manifests', () => {
+      const result1 = DocumentClassifier.classify('54120-1_Packing_Slip.pdf')
+      expect(result1.category).toBe('packing_list')
+      expect(result1.isUncertain).toBe(false)
+
+      const result2 = DocumentClassifier.classify(
+        '54120-1_Shipping_Manifest.pdf',
+      )
+      expect(result2.category).toBe('packing_list')
+      expect(result2.isUncertain).toBe(false)
     })
   })
 
@@ -127,25 +163,58 @@ describe('DocumentClassifier & Safe ZIP Extraction', () => {
   })
 
   describe('Safe ZIP Extraction & Security Invariants', () => {
-    it('safely extracts legitimate release archives', async () => {
+    it('safely extracts legitimate release archives with nested folders of PDFs and schedules', async () => {
       const zip = new JSZip()
       zip.file(
-        'CNC/54120-1_Table_Layout.pdf',
+        'Release_54120_1/PDFs/54120-1_Table_Layout.pdf',
         Buffer.from('PDF Mock Content 1'),
       )
-      zip.file('ELU/54120-1_Extrusions.pdf', Buffer.from('PDF Mock Content 2'))
       zip.file(
-        'Takeoff/Schedule.csv',
+        'Release_54120_1/PDFs/54120-1_Cut_Drawings.pdf',
+        Buffer.from('PDF Mock Content 2'),
+      )
+      zip.file(
+        'Release_54120_1/PDFs/54120-1_Extrusion_Cut_List.pdf',
+        Buffer.from('PDF Mock Content 3'),
+      )
+      zip.file(
+        'Release_54120_1/PDFs/54120-1_Parts_Prep_Assembly.pdf',
+        Buffer.from('PDF Mock Content 4'),
+      )
+      zip.file(
+        'Release_54120_1/PDFs/54120-1_Packing_List.pdf',
+        Buffer.from('PDF Mock Content 5'),
+      )
+      zip.file(
+        'Release_54120_1/PDFs/54120-1_Elevation_Matrix.pdf',
+        Buffer.from('PDF Mock Content 6'),
+      )
+      zip.file(
+        'Release_54120_1/PDFs/54120-1_Shop_Drawings.pdf',
+        Buffer.from('PDF Mock Content 7'),
+      )
+      zip.file(
+        'Release_54120_1/PDFs/54120-1_Priority_List.pdf',
+        Buffer.from('PDF Mock Content 8'),
+      )
+      zip.file(
+        'Release_54120_1/Takeoff/Schedule.csv',
         Buffer.from('Mark,Description,Quantity\nP-101,Panel A,10'),
       )
 
       const buffer = await zip.generateAsync({ type: 'nodebuffer' })
       const extracted = await DocumentClassifier.safeExtractZip(buffer)
 
-      expect(extracted.length).toBe(3)
-      expect(
-        extracted.some((f) => f.filename === '54120-1_Table_Layout.pdf'),
-      ).toBe(true)
+      expect(extracted.length).toBe(9)
+      const categories = extracted.map((f) => f.classification.category)
+      expect(categories).toContain('cnc_layout')
+      expect(categories).toContain('cut_drawing')
+      expect(categories).toContain('extrusion_cut_list')
+      expect(categories).toContain('assembly_drawing')
+      expect(categories).toContain('packing_list')
+      expect(categories).toContain('elevation')
+      expect(categories).toContain('accessory_list')
+      expect(categories).toContain('takeoff')
     })
 
     it('does not treat traversal-like bytes in file contents as a path', async () => {
