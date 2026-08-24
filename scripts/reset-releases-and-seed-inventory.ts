@@ -1,10 +1,8 @@
-import { eq, ne, and } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { db, pool } from '@/db'
 import {
   organizations,
   users,
-  customers,
-  projects,
   productionJobs,
   releases,
   releaseRevisions,
@@ -57,8 +55,7 @@ async function resetReleasesAndSeedInventory() {
     '1. Clearing shipments, pallets, quality records, movements, operations, documents, releases, and ALL jobs...',
   )
 
-  await db
-    .delete(purchaseOrderLines)
+  await db.delete(purchaseOrderLines)
   await db
     .delete(purchaseOrders)
     .where(eq(purchaseOrders.organizationId, organization.id))
