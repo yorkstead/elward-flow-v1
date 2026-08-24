@@ -28,33 +28,55 @@ export default async function ReleasesPage() {
   }
 
   // Fetch all releases with jobs, active revisions, and mark counts
-  const releaseList = await db
-    .select({
-      releaseId: releases.id,
-      releaseNumber: releases.releaseNumber,
-      status: releases.status,
-      priority: releases.priority,
-      requiredDate: releases.requiredDate,
-      jobNumber: productionJobs.jobNumber,
-      jobName: productionJobs.name,
-      customerName: customers.name,
-      revisionId: releaseRevisions.id,
-      revisionNumber: releaseRevisions.revisionNumber,
-      revisionLabel: releaseRevisions.revisionLabel,
-      revisionStatus: releaseRevisions.status,
-      isCurrent: releaseRevisions.isCurrent,
-    })
-    .from(releases)
-    .innerJoin(productionJobs, eq(releases.jobId, productionJobs.id))
-    .innerJoin(customers, eq(productionJobs.customerId, customers.id))
-    .leftJoin(
-      releaseRevisions,
-      and(
-        eq(releases.id, releaseRevisions.releaseId),
-        eq(releaseRevisions.isCurrent, true),
-      ),
-    )
-    .orderBy(desc(releases.updatedAt))
+  let releaseList: {
+    releaseId: string
+    releaseNumber: number
+    status: string
+    priority: number
+    requiredDate: Date | null
+    jobNumber: string
+    jobName: string
+    customerName: string | null
+    revisionId: string | null
+    revisionNumber: number | null
+    revisionLabel: string | null
+    revisionStatus: string | null
+    isCurrent: boolean | null
+  }[] = []
+
+  try {
+    const orgId = session.user.organizationId || '00000000-0000-0000-0000-000000000001'
+    releaseList = await db
+      .select({
+        releaseId: releases.id,
+        releaseNumber: releases.releaseNumber,
+        status: releases.status,
+        priority: releases.priority,
+        requiredDate: releases.requiredDate,
+        jobNumber: productionJobs.jobNumber,
+        jobName: productionJobs.name,
+        customerName: customers.name,
+        revisionId: releaseRevisions.id,
+        revisionNumber: releaseRevisions.revisionNumber,
+        revisionLabel: releaseRevisions.revisionLabel,
+        revisionStatus: releaseRevisions.status,
+        isCurrent: releaseRevisions.isCurrent,
+      })
+      .from(releases)
+      .innerJoin(productionJobs, eq(releases.jobId, productionJobs.id))
+      .leftJoin(customers, eq(productionJobs.customerId, customers.id))
+      .leftJoin(
+        releaseRevisions,
+        and(
+          eq(releases.id, releaseRevisions.releaseId),
+          eq(releaseRevisions.isCurrent, true),
+        ),
+      )
+      .where(eq(releases.organizationId, orgId))
+      .orderBy(desc(releases.updatedAt))
+  } catch (err) {
+    console.error('Failed to load release list:', err)
+  }
 
   return (
     <AppShell
