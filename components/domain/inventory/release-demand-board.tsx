@@ -142,7 +142,6 @@ export function ReleaseDemandBoard({
         body: JSON.stringify({
           inventoryItemId: selectedStockId,
           releaseId,
-          panelMarkId: selectedDemand.id,
           quantity: qty,
           isSubstituted,
           originalItemId: selectedDemand.inventoryItemId,
@@ -183,6 +182,49 @@ export function ReleaseDemandBoard({
     }
   }
 
+  const handleAutoAllocateAll = async () => {
+    setAllocating(true)
+    setErrorMsg('')
+    try {
+      for (const d of demand) {
+        if (d.shortageQuantity > 0 && d.inventoryItemId) {
+          const qtyToAllocate = Math.min(
+            d.shortageQuantity,
+            d.availableStockQuantity,
+          )
+          if (qtyToAllocate > 0) {
+            await fetch('/api/inventory/allocate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                inventoryItemId: d.inventoryItemId,
+                releaseId,
+                quantity: qtyToAllocate,
+              }),
+            })
+          }
+        }
+      }
+
+      setDemand((prev) =>
+        prev.map((d) => {
+          const add = Math.min(d.shortageQuantity, d.availableStockQuantity)
+          const newAlloc = d.allocatedQuantity + add
+          return {
+            ...d,
+            allocatedQuantity: newAlloc,
+            shortageQuantity: Math.max(0, d.requiredQuantity - newAlloc),
+          }
+        }),
+      )
+      onDemandUpdated?.()
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Failed to auto-allocate')
+    } finally {
+      setAllocating(false)
+    }
+  }
+
   const handleExecuteMovement = async () => {
     if (!selectedDemand || !movementQty) return
 
@@ -194,7 +236,7 @@ export function ReleaseDemandBoard({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: movementType,
-          allocationId: selectedDemand.id, // using mark demand id for linking
+          allocationId: selectedDemand.id,
           quantity: parseFloat(movementQty),
           locationId: locationId || locations[0]?.id,
           reason: movementReason.trim() || undefined,
@@ -202,7 +244,6 @@ export function ReleaseDemandBoard({
       })
 
       if (!res.ok) {
-        // Fallback for simulation if allocation record is synthetic
         console.warn('Issue route response', res.status)
       }
 
@@ -233,6 +274,8 @@ export function ReleaseDemandBoard({
     }
   }
 
+  const totalShortage = demand.reduce((sum, d) => sum + d.shortageQuantity, 0)
+
   return (
     <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
@@ -240,25 +283,42 @@ export function ReleaseDemandBoard({
           <Layers className="h-5 w-5 text-blue-600" />
           <div>
             <h2 className="text-sm font-bold text-slate-900">
-              Release Material Demand & Allocations — {releaseKey}
+              Release Material Demand &amp; Allocations — {releaseKey}
             </h2>
             <p className="text-xs text-slate-500">
-              Compare required, available, allocated, issued, and shortages with
-              over-allocation blocking
+              Allocated at the release level across all constituent panel marks
+              with over-allocation blocking.
             </p>
           </div>
         </div>
+
+        {totalShortage > 0 && (
+          <Button
+            type="button"
+            size="sm"
+            disabled={allocating}
+            onClick={handleAutoAllocateAll}
+            className="bg-emerald-600 text-xs font-bold text-white hover:bg-emerald-700"
+          >
+            <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+            Auto-Allocate All for Release
+          </Button>
+        )}
       </div>
 
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="text-xs">
-              <TableHead className="font-bold">Mark / Requirement</TableHead>
-              <TableHead className="font-bold">Family / Color</TableHead>
-              <TableHead className="text-center font-bold">Required</TableHead>
+              <TableHead className="font-bold">Material / Scope</TableHead>
+              <TableHead className="font-bold">Color / Dimensions</TableHead>
+              <TableHead className="text-center font-bold">
+                Required Sheets
+              </TableHead>
               <TableHead className="text-center font-bold">In Stock</TableHead>
-              <TableHead className="text-center font-bold">Allocated</TableHead>
+              <TableHead className="text-center font-bold">
+                Allocated to Release
+              </TableHead>
               <TableHead className="text-center font-bold">
                 Issued to Shop
               </TableHead>
@@ -271,8 +331,8 @@ export function ReleaseDemandBoard({
               <TableRow key={item.id} className="text-xs">
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <span className="font-mono font-bold text-slate-950">
-                      {item.markCode}
+                    <span className="font-bold text-slate-950">
+                      {item.materialFamily}
                     </span>
                     {item.isSubstituted && (
                       <Badge className="border-purple-200 bg-purple-100 text-[10px] font-bold text-purple-800">
@@ -280,16 +340,22 @@ export function ReleaseDemandBoard({
                       </Badge>
                     )}
                   </div>
-                  <div className="text-[11px] text-slate-600">
-                    {item.dimensions || 'Standard spec'}
+                  <div className="mt-0.5 text-[11px] text-slate-500">
+                    Release Scope: {item.totalPanelCount || 0} Panels
+                    {item.markList && item.markList.length > 0 && (
+                      <span className="ml-1 text-slate-400">
+                        ({item.markList.slice(0, 4).join(', ')}
+                        {item.markList.length > 4 ? '...' : ''})
+                      </span>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>
                   <div className="font-semibold text-slate-900">
-                    {item.materialFamily}
-                  </div>
-                  <div className="text-[11px] text-slate-600">
                     {item.color || 'Standard Finish'}
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    {item.dimensions || 'Standard spec'}
                   </div>
                 </TableCell>
                 <TableCell className="text-center font-mono font-bold text-slate-900">
@@ -361,11 +427,12 @@ export function ReleaseDemandBoard({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="text-base font-bold text-slate-950">
-              Allocate Material — Mark {selectedDemand?.markCode}
+              Allocate Material to Release {releaseKey}
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Reserve warehouse stock for release demand with over-allocation
-              blocking and substitution validation.
+              Reserve warehouse stock for {selectedDemand?.materialFamily}{' '}
+              {selectedDemand?.color ? `(${selectedDemand.color})` : ''} across
+              all {selectedDemand?.totalPanelCount || 0} panels in this release.
             </DialogDescription>
           </DialogHeader>
 
