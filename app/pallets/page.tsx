@@ -11,6 +11,11 @@ import {
 } from '@/db/schema'
 import { eq, desc } from 'drizzle-orm'
 import { PalletDashboardView } from '@/components/domain/pallets/pallet-dashboard-view'
+import { ensureSystemFoundationPopulated } from '@/lib/services/system-init'
+
+export const metadata = {
+  title: 'Pallet Construction & Staging | Ellwood Flow',
+}
 
 export default async function PalletsPage() {
   const session = await auth()
@@ -20,6 +25,8 @@ export default async function PalletsPage() {
     'use server'
     await signOut({ redirectTo: '/sign-in' })
   }
+
+  await ensureSystemFoundationPopulated(session.user.organizationId)
 
   const userContext = {
     userId: session.user.id,

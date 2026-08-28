@@ -11,6 +11,11 @@ import {
 import { eq, and, desc } from 'drizzle-orm'
 import { QualityService } from '@/lib/services/quality'
 import { QualityDashboardView } from '@/components/domain/quality/quality-dashboard-view'
+import { ensureSystemFoundationPopulated } from '@/lib/services/system-init'
+
+export const metadata = {
+  title: 'Quality Management | Ellwood Flow',
+}
 
 export default async function QualityPage() {
   const session = await auth()
@@ -21,11 +26,14 @@ export default async function QualityPage() {
     await signOut({ redirectTo: '/sign-in' })
   }
 
+  await ensureSystemFoundationPopulated(session.user.organizationId)
+
   const context = {
     userId: session.user.id,
     email: session.user.email || 'admin@example.test',
     roles: session.user.roles || [],
     isAdmin: session.user.isAdmin,
+    organizationId: session.user.organizationId,
   }
 
   // 1. Fetch default Release (Job 25036 or first available release)

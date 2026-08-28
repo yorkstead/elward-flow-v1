@@ -4,6 +4,11 @@ import { AppShell } from '@/components/domain/app-shell'
 import { ShippingService } from '@/lib/services/shipping'
 import { PalletService } from '@/lib/services/pallet'
 import { ShippingDashboardView } from '@/components/domain/shipping/shipping-dashboard-view'
+import { ensureSystemFoundationPopulated } from '@/lib/services/system-init'
+
+export const metadata = {
+  title: 'Shipping Logistics & BOL | Ellwood Flow',
+}
 
 export default async function ShippingPage() {
   const session = await auth()
@@ -13,6 +18,8 @@ export default async function ShippingPage() {
     'use server'
     await signOut({ redirectTo: '/sign-in' })
   }
+
+  await ensureSystemFoundationPopulated(session.user.organizationId)
 
   const userContext = {
     userId: session.user.id,

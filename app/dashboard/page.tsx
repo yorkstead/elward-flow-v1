@@ -42,6 +42,9 @@ import {
 import { FirstRunDashboard } from '@/components/domain/dashboard/first-run-dashboard'
 import { Button } from '@/components/ui/button'
 import { ensurePalletSchemaApplied } from '@/lib/services/pallet-planner'
+import { ensureSystemFoundationPopulated } from '@/lib/services/system-init'
+
+export const dynamic = 'force-dynamic'
 
 interface PageProps {
   searchParams: Promise<{
@@ -53,14 +56,20 @@ interface PageProps {
 export default async function DashboardPage(props: PageProps) {
   try {
     const session = await auth()
-    const searchParams = await props.searchParams
-
-    const organizationId = session?.user?.organizationId
-    if (!organizationId || organizationId === 'undefined') {
+    if (!session?.user) {
       return <FirstRunDashboard />
     }
+    const searchParams = await props.searchParams
 
     await ensurePalletSchemaApplied()
+    let rawOrgId = session.user.organizationId
+    if (!rawOrgId || rawOrgId === 'undefined') {
+      const [firstOrg] = await db.select().from(productionJobs).limit(1)
+      if (firstOrg) rawOrgId = firstOrg.organizationId
+    }
+
+    const orgId: string = rawOrgId || '00000000-0000-0000-0000-000000000001'
+    await ensureSystemFoundationPopulated(orgId)
 
     const [mostRecentRelease] = await db
       .select({
@@ -69,7 +78,7 @@ export default async function DashboardPage(props: PageProps) {
       })
       .from(releases)
       .innerJoin(productionJobs, eq(releases.jobId, productionJobs.id))
-      .where(eq(releases.organizationId, organizationId))
+      .where(eq(releases.organizationId, orgId))
       .orderBy(desc(releases.updatedAt))
       .limit(1)
 
@@ -103,7 +112,7 @@ export default async function DashboardPage(props: PageProps) {
       .leftJoin(projects, eq(productionJobs.projectId, projects.id))
       .where(
         and(
-          eq(productionJobs.organizationId, organizationId),
+          eq(productionJobs.organizationId, orgId),
           eq(productionJobs.jobNumber, targetJobNumber),
         ),
       )
@@ -142,7 +151,7 @@ export default async function DashboardPage(props: PageProps) {
       .from(releases)
       .where(
         and(
-          eq(releases.organizationId, organizationId),
+          eq(releases.organizationId, orgId),
           eq(releases.jobId, jobRecord.id),
           eq(releases.releaseNumber, targetReleaseNumber),
         ),
@@ -176,7 +185,7 @@ export default async function DashboardPage(props: PageProps) {
           .from(releaseRevisions)
           .where(
             and(
-              eq(releaseRevisions.organizationId, organizationId),
+              eq(releaseRevisions.organizationId, orgId),
               eq(releaseRevisions.releaseId, releaseRecord.id),
               eq(releaseRevisions.isCurrent, true),
             ),
@@ -191,7 +200,7 @@ export default async function DashboardPage(props: PageProps) {
           .from(panelMarks)
           .where(
             and(
-              eq(panelMarks.organizationId, organizationId),
+              eq(panelMarks.organizationId, orgId),
               eq(panelMarks.releaseRevisionId, revisionRecord.id),
             ),
           )
@@ -201,7 +210,7 @@ export default async function DashboardPage(props: PageProps) {
     const opDefs = await db
       .select()
       .from(operationDefinitions)
-      .where(eq(operationDefinitions.organizationId, organizationId))
+      .where(eq(operationDefinitions.organizationId, orgId))
       .orderBy(operationDefinitions.defaultSequence)
 
     const opInstances = revisionRecord
@@ -210,7 +219,7 @@ export default async function DashboardPage(props: PageProps) {
           .from(operationInstances)
           .where(
             and(
-              eq(operationInstances.organizationId, organizationId),
+              eq(operationInstances.organizationId, orgId),
               eq(operationInstances.releaseRevisionId, revisionRecord.id),
             ),
           )
@@ -303,7 +312,7 @@ export default async function DashboardPage(props: PageProps) {
             )
             .where(
               and(
-                eq(documents.organizationId, organizationId),
+                eq(documents.organizationId, orgId),
                 eq(documents.releaseId, releaseRecord.id),
                 eq(documentRevisions.releaseRevisionId, revisionRecord.id),
               ),
@@ -344,7 +353,7 @@ export default async function DashboardPage(props: PageProps) {
         })
         .from(activityEvents)
         .leftJoin(users, eq(activityEvents.actorId, users.id))
-        .where(eq(activityEvents.organizationId, organizationId))
+        .where(eq(activityEvents.organizationId, orgId))
         .orderBy(desc(activityEvents.createdAt))
         .limit(5)
     } catch (err) {
@@ -438,6 +447,9 @@ export default async function DashboardPage(props: PageProps) {
       </div>
     )
   } catch (error) {
+    if ((error as any)?.digest === 'DYNAMIC_SERVER_USAGE') {
+      throw error
+    }
     console.error('DashboardPage top-level error:', error)
     return <FirstRunDashboard />
   }

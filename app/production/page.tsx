@@ -6,9 +6,10 @@ import { ProductionService } from '@/lib/services/production'
 import { db } from '@/db'
 import { workstations } from '@/db/schema'
 import { eq } from 'drizzle-orm'
+import { ensureSystemFoundationPopulated } from '@/lib/services/system-init'
 
 export const metadata = {
-  title: 'Production Schedule & Planning | Elward Flow',
+  title: 'Production Schedule & Planning | Ellwood Flow',
 }
 
 export default async function ProductionPage() {
@@ -20,11 +21,14 @@ export default async function ProductionPage() {
     await signOut({ redirectTo: '/sign-in' })
   }
 
+  await ensureSystemFoundationPopulated(session.user.organizationId)
+
   const context = {
     userId: session.user.id,
     email: session.user.email || 'admin@example.test',
     roles: session.user.roles || [],
     isAdmin: session.user.isAdmin,
+    organizationId: session.user.organizationId,
   }
 
   // Preload department capacity metrics
