@@ -214,7 +214,7 @@ async function resetReleasesAndSeedInventory() {
       itemNumber: 'ALU-EXT-4001',
       materialFamily: 'Extrusion',
       description: 'Perimeter Extrusion Profile 4001 (24ft Stock Length)',
-      manufacturer: 'Elward Standard Extrusions',
+      manufacturer: 'Ellwood Standard Extrusions',
       color: 'Mill Finish',
       finish: 'Mill Finish',
       thickness: '0.1250',
@@ -229,7 +229,7 @@ async function resetReleasesAndSeedInventory() {
       itemNumber: 'ALU-EXT-4002',
       materialFamily: 'Extrusion',
       description: 'Intermediate Stiffener Profile 4002 (24ft Stock Length)',
-      manufacturer: 'Elward Standard Extrusions',
+      manufacturer: 'Ellwood Standard Extrusions',
       color: 'Mill Finish',
       finish: 'Mill Finish',
       thickness: '0.1250',
@@ -244,7 +244,7 @@ async function resetReleasesAndSeedInventory() {
       itemNumber: 'CLIP-ALU-25',
       materialFamily: 'Fastener',
       description: 'Heavy Duty Attachment Clips - 2.5" Extruded Aluminum',
-      manufacturer: 'Elward Standard Extrusions',
+      manufacturer: 'Ellwood Standard Extrusions',
       color: 'Mill Finish',
       finish: 'Mill Finish',
       thickness: '0.1250',
@@ -530,13 +530,13 @@ async function resetReleasesAndSeedInventory() {
     },
   ])
 
-  // PO-94103 (Elward Standard Extrusions - Issued)
+  // PO-94103 (Ellwood Standard Extrusions - Issued)
   const [po3] = await db
     .insert(purchaseOrders)
     .values({
       organizationId: organization.id,
       poNumber: 'PO-94103',
-      vendorName: 'Elward Standard Extrusions',
+      vendorName: 'Ellwood Standard Extrusions',
       status: 'Issued',
       orderDate: new Date(Date.now() - 86400000 * 1),
       expectedDate: new Date(Date.now() + 86400000 * 5),

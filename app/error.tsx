@@ -15,7 +15,7 @@ export default function ErrorPage({
     <main className="grid min-h-screen place-items-center p-6">
       <section className="max-w-lg text-center">
         <h1 className="text-3xl font-bold">
-          Elward Flow could not complete that request
+          Ellwood Flow could not complete that request
         </h1>
         <p className="mt-3 text-slate-600">
           No production data was changed. Retry, or give support the reference

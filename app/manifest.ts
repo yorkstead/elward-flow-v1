@@ -2,10 +2,10 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Elward Flow',
-    short_name: 'Elward Flow',
+    name: 'Ellwood Flow',
+    short_name: 'Ellwood Flow',
     description:
-      'Elward Systems operational control from release intake through shipment.',
+      'Ellwood Systems operational control from release intake through shipment.',
     start_url: '/dashboard',
     scope: '/',
     display: 'standalone',

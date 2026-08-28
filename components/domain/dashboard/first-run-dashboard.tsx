@@ -17,7 +17,7 @@ export function FirstRunDashboard() {
             No production releases yet
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-200 sm:text-base">
-            Start with an approved release package. Elward Flow will preserve
+            Start with an approved release package. Ellwood Flow will preserve
             the original files, establish the current revision, and build the
             permitted path from panel marks through shipment.
           </p>

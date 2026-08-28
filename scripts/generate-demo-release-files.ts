@@ -35,7 +35,7 @@ async function createSamplePdf(
   })
 
   page.drawText(
-    sanitizeText('ELWARD SYSTEMS -- OPERATIONAL CONTROLLED DOCUMENT'),
+    sanitizeText('ELLWOOD SYSTEMS -- OPERATIONAL CONTROLLED DOCUMENT'),
     {
       x: 48,
       y: 742,
@@ -112,7 +112,7 @@ async function createSamplePdf(
 
   page.drawText(
     sanitizeText(
-      'CONFIDENTIAL & PROPRIETARY -- ELWARD SYSTEMS CORPORATION -- SHOP FLOOR RELEASE CONTROL',
+      'CONFIDENTIAL & PROPRIETARY -- ELLWOOD SYSTEMS CORPORATION -- SHOP FLOOR RELEASE CONTROL',
     ),
     {
       x: 48,

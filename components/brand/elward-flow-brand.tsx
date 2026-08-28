@@ -15,18 +15,18 @@ export function ElwardFlowBrand({
   return (
     <div
       className={cn('flex min-w-0 items-center gap-2.5', className)}
-      aria-label="Elward Flow"
+      aria-label="Ellwood Flow"
     >
       <span className="flex shrink-0 items-center rounded-sm bg-white px-2 py-1 shadow-sm ring-1 ring-white/20">
         <Image
-          src="/brand/elward-logo-primary.png"
-          alt="Elward"
-          width={1467}
-          height={306}
+          src="/brand/ellwood-logo-primary.svg"
+          alt="Ellwood Systems"
+          width={420}
+          height={90}
           priority={priority}
           className={cn(
-            'h-auto w-[106px]',
-            compact && 'w-[88px] max-[380px]:w-[72px]',
+            'h-auto w-[114px]',
+            compact && 'w-[96px] max-[380px]:w-[80px]',
           )}
         />
       </span>
@@ -52,3 +52,6 @@ export function ElwardFlowBrand({
     </div>
   )
 }
+
+export const EllwoodFlowBrand = ElwardFlowBrand
+

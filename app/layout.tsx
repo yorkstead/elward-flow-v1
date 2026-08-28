@@ -17,18 +17,18 @@ const robotoCondensed = Roboto_Condensed({
 })
 
 export const metadata: Metadata = {
-  title: { default: 'Elward Flow', template: '%s · Elward Flow' },
+  title: { default: 'Ellwood Flow', template: '%s · Ellwood Flow' },
   description:
-    'Elward Systems operational control from release intake through shipment.',
-  applicationName: 'Elward Flow',
+    'Ellwood Systems operational control from release intake through shipment.',
+  applicationName: 'Ellwood Flow',
   manifest: '/manifest.webmanifest',
   category: 'business',
-  creator: 'Elward Systems Corporation',
-  publisher: 'Elward Systems Corporation',
+  creator: 'Ellwood Systems Corporation',
+  publisher: 'Ellwood Systems Corporation',
   formatDetection: { telephone: false },
   appleWebApp: {
     capable: true,
-    title: 'Elward Flow',
+    title: 'Ellwood Flow',
     statusBarStyle: 'black-translucent',
   },
 }

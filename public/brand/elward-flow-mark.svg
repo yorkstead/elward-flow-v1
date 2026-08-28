@@ -1,6 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Elward Flow">
-  <rect width="64" height="64" rx="10" fill="#1b334f"/>
-  <path d="M0 48h64v16H0z" fill="#0063a6"/>
-  <path d="M9 9h8v46H9z" fill="#e0653b"/>
-  <text x="24" y="39" fill="#fff" font-family="Arial, sans-serif" font-size="25" font-weight="700" letter-spacing="-1">EF</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Ellwood Flow">
+  <rect width="64" height="64" rx="12" fill="#1B334F"/>
+  <path d="M0 48h64v16H0z" fill="#0063A6" opacity="0.9"/>
+  <!-- Overlapping Geometric Rainscreen Panels -->
+  <path d="M12 16l20-6 12 18-20 6z" fill="#3B82F6" opacity="0.6"/>
+  <path d="M22 28l22-6 10 22-22 6z" fill="#F26A36"/>
+  <text x="14" y="44" fill="#FFFFFF" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="900" letter-spacing="-0.5">EF</text>
 </svg>

@@ -10,7 +10,7 @@ export function AppLaunchScreen() {
       <div
         className="flex flex-col items-center gap-3"
         role="status"
-        aria-label="Elward Flow is loading"
+        aria-label="Ellwood Flow is loading"
       >
         <div className="relative grid h-16 w-16 place-items-center">
           <span
@@ -18,15 +18,15 @@ export function AppLaunchScreen() {
             aria-hidden="true"
           />
           <Image
-            src="/brand/elward-symbol-orange.png"
+            src="/brand/ellwood-symbol-orange.svg"
             alt=""
-            width={512}
-            height={512}
+            width={100}
+            height={100}
             priority
             className="h-10 w-10 object-contain"
           />
         </div>
-        <span className="sr-only">Elward Flow is loading</span>
+        <span className="sr-only">Ellwood Flow is loading</span>
       </div>
     </div>
   )

@@ -29,7 +29,7 @@ export default async function SignInPage({
               One operational source of truth.
             </h1>
             <p className="mt-5 text-sm leading-6 text-slate-200">
-              Production control for Elward Systems—from engineering intake and
+              Production control for Ellwood Systems—from engineering intake and
               revision safety through QC, palletizing, and dispatch.
             </p>
           </div>
@@ -44,7 +44,7 @@ export default async function SignInPage({
             Secure operations access
           </p>
           <h2 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 uppercase">
-            Sign in to Elward Flow
+            Sign in to Ellwood Flow
           </h2>
           <p className="mt-3 text-sm leading-6 text-slate-600">
             Accounts are provisioned by an administrator. Public registration is

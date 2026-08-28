@@ -9,7 +9,7 @@ export default function GlobalError({
     <html>
       <body>
         <main>
-          <h1>Elward Flow is unavailable</h1>
+          <h1>Ellwood Flow is unavailable</h1>
           <button onClick={() => unstable_retry()}>Try again</button>
         </main>
       </body>

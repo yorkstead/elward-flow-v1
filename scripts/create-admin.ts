@@ -21,8 +21,8 @@ async function main() {
   const [org] = await db
     .insert(organizations)
     .values({
-      name: 'Elward Systems — Local Development',
-      slug: 'elward-local',
+      name: 'Ellwood Systems — Local Development',
+      slug: 'ellwood-local',
     })
     .onConflictDoUpdate({
       target: organizations.slug,

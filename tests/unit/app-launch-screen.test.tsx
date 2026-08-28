@@ -7,8 +7,8 @@ describe('AppLaunchScreen', () => {
   it('provides a branded and accessible initial loading state', () => {
     const markup = renderToStaticMarkup(<AppLaunchScreen />)
 
-    expect(markup).toContain('aria-label="Elward Flow is loading"')
-    expect(markup).toContain('elward-symbol-orange.png')
+    expect(markup).toContain('aria-label="Ellwood Flow is loading"')
+    expect(markup).toContain('ellwood-symbol-orange.svg')
     expect(markup).toContain('animate-spin')
   })
 
