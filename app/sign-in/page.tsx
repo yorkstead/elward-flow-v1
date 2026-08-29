@@ -5,6 +5,9 @@ import { SignInForm } from './sign-in-form'
 import { ElwardFlowBrand } from '@/components/brand/elward-flow-brand'
 
 export const metadata: Metadata = { title: 'Sign in' }
+
+export const dynamic = 'force-dynamic'
+
 export default async function SignInPage({
   searchParams,
 }: {

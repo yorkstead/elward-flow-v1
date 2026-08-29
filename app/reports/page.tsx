@@ -4,6 +4,8 @@ import { AppShell } from '@/components/domain/app-shell'
 import { ReportsService } from '@/lib/services/reports'
 import { ReportsDashboardView } from '@/components/domain/reports/reports-dashboard-view'
 
+export const dynamic = 'force-dynamic'
+
 export default async function ReportsPage() {
   const session = await auth()
   if (!session?.user) redirect('/sign-in')

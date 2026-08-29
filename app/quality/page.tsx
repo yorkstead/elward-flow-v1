@@ -17,6 +17,8 @@ export const metadata = {
   title: 'Quality Management | Ellwood Flow',
 }
 
+export const dynamic = 'force-dynamic'
+
 export default async function QualityPage() {
   const session = await auth()
   if (!session?.user) redirect('/sign-in')

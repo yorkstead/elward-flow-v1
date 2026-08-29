@@ -12,6 +12,8 @@ export const metadata = {
   title: 'Production Schedule & Planning | Ellwood Flow',
 }
 
+export const dynamic = 'force-dynamic'
+
 export default async function ProductionPage() {
   const session = await auth()
   if (!session?.user) redirect('/sign-in')

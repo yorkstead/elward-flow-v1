@@ -1,16 +1,19 @@
 'use client'
+
 import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
+
 export default function ErrorPage({
   error,
-  unstable_retry,
+  reset,
 }: {
   error: Error & { digest?: string }
-  unstable_retry: () => void
+  reset: () => void
 }) {
   useEffect(() => {
     console.error(error)
   }, [error])
+
   return (
     <main className="grid min-h-screen place-items-center p-6">
       <section className="max-w-lg text-center">
@@ -24,7 +27,7 @@ export default function ErrorPage({
         {error.digest ? (
           <code className="mt-4 block">Reference: {error.digest}</code>
         ) : null}
-        <Button className="mt-6" onClick={() => unstable_retry()}>
+        <Button className="mt-6" onClick={() => reset()}>
           Try again
         </Button>
       </section>

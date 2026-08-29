@@ -10,6 +10,8 @@ export const metadata = {
   title: 'Shipping Logistics & BOL | Ellwood Flow',
 }
 
+export const dynamic = 'force-dynamic'
+
 export default async function ShippingPage() {
   const session = await auth()
   if (!session?.user) redirect('/sign-in')

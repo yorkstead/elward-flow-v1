@@ -8,8 +8,10 @@ import { eq, desc } from 'drizzle-orm'
 import { ensureSystemFoundationPopulated } from '@/lib/services/system-init'
 
 export const metadata = {
-  title: 'Scan Station | Elward Flow',
+  title: 'Scan Station | Ellwood Flow',
 }
+
+export const dynamic = 'force-dynamic'
 
 export default async function ScanPage() {
   const session = await auth()

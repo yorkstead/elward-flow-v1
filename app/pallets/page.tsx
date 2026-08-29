@@ -17,6 +17,8 @@ export const metadata = {
   title: 'Pallet Construction & Staging | Ellwood Flow',
 }
 
+export const dynamic = 'force-dynamic'
+
 export default async function PalletsPage() {
   const session = await auth()
   if (!session?.user) redirect('/sign-in')

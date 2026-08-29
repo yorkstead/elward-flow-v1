@@ -15,6 +15,8 @@ import { InventoryService } from '@/lib/services/inventory'
 import { InventoryDashboardView } from '@/components/domain/inventory/inventory-dashboard-view'
 import { ensureSystemFoundationPopulated } from '@/lib/services/system-init'
 
+export const dynamic = 'force-dynamic'
+
 export default async function InventoryPage() {
   const session = await auth()
   if (!session?.user) redirect('/sign-in')

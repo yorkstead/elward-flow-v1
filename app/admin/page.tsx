@@ -4,6 +4,8 @@ import { AppShell } from '@/components/domain/app-shell'
 import { AdminService } from '@/lib/services/admin'
 import { AdminDashboardView } from '@/components/domain/admin/admin-dashboard-view'
 
+export const dynamic = 'force-dynamic'
+
 export default async function AdminPage() {
   const session = await auth()
   if (!session?.user) redirect('/sign-in')
