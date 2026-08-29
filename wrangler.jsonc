@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "ellwood-flow-v1",
+ // wrangler.jsonc
+vv"name": "yorkstead-operations-proxy",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-08-28",
   "compatibility_flags": ["nodejs_compat"],
