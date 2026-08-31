@@ -1,28 +1,27 @@
 import { describe, it, expect } from 'vitest'
-import { resolveRpIdAndOrigin, getPasskeyAuthenticationOptions } from '@/lib/services/passkey'
+import { getPasskeyAuthenticationOptions } from '@/lib/services/passkey'
+import {
+  getPasskeyRelyingParty,
+  requirePasskeyOrigin,
+} from '@/lib/auth/passkey-challenge'
 
-describe('Passkey Service & WebAuthn Integration', () => {
-  it('correctly resolves RP ID and Origin from host headers for local development', () => {
-    const { rpID, origin } = resolveRpIdAndOrigin('localhost:3000', null)
-    expect(rpID).toBe('localhost')
-    expect(origin).toBe('http://localhost:3000')
+describe('Passkey security configuration', () => {
+  it('uses the configured origin rather than request headers', () => {
+    expect(getPasskeyRelyingParty()).toEqual({
+      rpID: 'localhost',
+      origin: 'http://localhost:3000',
+    })
+    expect(() =>
+      requirePasskeyOrigin(
+        new Request('http://localhost:3000', {
+          headers: { origin: 'https://attacker.example' },
+        }),
+      ),
+    ).toThrow('Invalid request origin')
   })
-
-  it('correctly resolves RP ID and Origin for production domain', () => {
-    const { rpID, origin } = resolveRpIdAndOrigin(
-      'ellwood.yorkstead.com',
-      'https://ellwood.yorkstead.com',
-    )
-    expect(rpID).toBe('ellwood.yorkstead.com')
-    expect(origin).toBe('https://ellwood.yorkstead.com')
-  })
-
-  it('generates standard WebAuthn authentication options with challenge and preferred verification', async () => {
-    const options = await getPasskeyAuthenticationOptions('ellwood.yorkstead.com')
-    expect(options).toBeDefined()
-    expect(options.challenge).toBeDefined()
-    expect(typeof options.challenge).toBe('string')
-    expect(options.rpId).toBe('ellwood.yorkstead.com')
-    expect(options.userVerification).toBe('preferred')
+  it('requires user verification for passwordless authentication', async () => {
+    const options = await getPasskeyAuthenticationOptions('localhost')
+    expect(options.challenge).toBeTruthy()
+    expect(options.userVerification).toBe('required')
   })
 })

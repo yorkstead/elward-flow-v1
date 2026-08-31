@@ -3,9 +3,8 @@ import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/domain/app-shell'
 import { ScanStation } from '@/components/domain/scanner/scan-station'
 import { db } from '@/db'
-import { workstations, movementEvents, users } from '@/db/schema'
-import { eq, desc } from 'drizzle-orm'
-import { ensureSystemFoundationPopulated } from '@/lib/services/system-init'
+import { workstations, movementEvents, users, sites } from '@/db/schema'
+import { eq, desc, and } from 'drizzle-orm'
 
 export const metadata = {
   title: 'Scan Station | Ellwood Flow',
@@ -22,8 +21,6 @@ export default async function ScanPage() {
     await signOut({ redirectTo: '/sign-in' })
   }
 
-  await ensureSystemFoundationPopulated(session.user.organizationId)
-
   // Load active workstations
   const stationList = await db
     .select({
@@ -33,7 +30,13 @@ export default async function ScanPage() {
       department: workstations.department,
     })
     .from(workstations)
-    .where(eq(workstations.isActive, true))
+    .innerJoin(sites, eq(workstations.siteId, sites.id))
+    .where(
+      and(
+        eq(workstations.isActive, true),
+        eq(sites.organizationId, session.user.organizationId),
+      ),
+    )
 
   // Load initial movement history
   const recentMovements = await db
@@ -56,6 +59,7 @@ export default async function ScanPage() {
     .from(movementEvents)
     .leftJoin(users, eq(movementEvents.actorId, users.id))
     .leftJoin(workstations, eq(movementEvents.workstationId, workstations.id))
+    .where(eq(movementEvents.organizationId, session.user.organizationId))
     .orderBy(desc(movementEvents.serverTimestamp))
     .limit(20)
 

@@ -1,6 +1,6 @@
 {
-  "id": "e0ca9bbc-3ad1-447d-8a67-f9841544a880",
-  "prevId": "614731fe-fae8-44b0-9c92-99322a3773af",
+  "id": "dfc33519-d9fb-4e92-b443-b2be203648f4",
+  "prevId": "e0ca9bbc-3ad1-447d-8a67-f9841544a880",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -6170,8 +6170,8 @@
           "method": "btree",
           "with": {}
         },
-        "shipment_pallets_pallet_id_idx": {
-          "name": "shipment_pallets_pallet_id_idx",
+        "shipment_pallets_pallet_id_unique": {
+          "name": "shipment_pallets_pallet_id_unique",
           "columns": [
             {
               "expression": "pallet_id",
@@ -6180,7 +6180,7 @@
               "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}

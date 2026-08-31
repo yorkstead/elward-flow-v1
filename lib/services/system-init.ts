@@ -24,9 +24,8 @@ import {
   palletItems,
   shipments,
   shipmentPallets,
-  auditEvents,
 } from '@/db/schema'
-import { eq, and, sql } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 
 let systemFoundationInitialized = false
 
@@ -37,12 +36,23 @@ let systemFoundationInitialized = false
 export async function ensureSystemFoundationPopulated(
   organizationId?: string,
 ): Promise<void> {
+  if (
+    process.env.NODE_ENV === 'production' ||
+    process.env.ALLOW_SYNTHETIC_SEED !== 'true'
+  )
+    throw new Error(
+      'Synthetic setup requires an explicit local development seed command.',
+    )
   if (systemFoundationInitialized) return
 
   try {
     // 1. Resolve organization
     let orgId = organizationId
-    if (!orgId || orgId === 'undefined' || orgId === '00000000-0000-0000-0000-000000000001') {
+    if (
+      !orgId ||
+      orgId === 'undefined' ||
+      orgId === '00000000-0000-0000-0000-000000000001'
+    ) {
       const [firstOrg] = await db.select().from(organizations).limit(1)
       if (firstOrg) {
         orgId = firstOrg.id
@@ -83,23 +93,75 @@ export async function ensureSystemFoundationPopulated(
 
     // 3. Ensure Workstations (17 Scan Stations)
     const stationConfigs = [
-      { name: 'CNC Router 01 (5x12 Vacuum Table)', code: 'CNC-01', department: 'CNC' },
-      { name: 'CNC Router 02 (5x12 Vacuum Table)', code: 'CNC-02', department: 'CNC' },
+      {
+        name: 'CNC Router 01 (5x12 Vacuum Table)',
+        code: 'CNC-01',
+        department: 'CNC',
+      },
+      {
+        name: 'CNC Router 02 (5x12 Vacuum Table)',
+        code: 'CNC-02',
+        department: 'CNC',
+      },
       { name: 'CNC Router 03 (5x10 Bed)', code: 'CNC-03', department: 'CNC' },
       { name: 'ELU Miter Saw Station 01', code: 'ELU-01', department: 'ELU' },
       { name: 'ELU Miter Saw Station 02', code: 'ELU-02', department: 'ELU' },
-      { name: 'Parts Preparation Area', code: 'PREP-01', department: 'Parts Prep' },
-      { name: 'Assembly Line 1 - Station 1 (Perimeter Frame)', code: 'ASSY-R1-S1', department: 'Assembly' },
-      { name: 'Assembly Line 1 - Station 2 (Stiffener & Hardware)', code: 'ASSY-R1-S2', department: 'Assembly' },
-      { name: 'Assembly Line 1 - Station 3 (Final Gasketing)', code: 'ASSY-R1-S3', department: 'Assembly' },
-      { name: 'Assembly Line 2 - Station 1 (Perimeter Frame)', code: 'ASSY-R2-S1', department: 'Assembly' },
-      { name: 'Assembly Line 2 - Station 2 (Stiffener & Hardware)', code: 'ASSY-R2-S2', department: 'Assembly' },
-      { name: 'Assembly Line 2 - Station 3 (Final Gasketing)', code: 'ASSY-R2-S3', department: 'Assembly' },
-      { name: 'Assembly Line 3 - Station 1 (Perimeter Frame)', code: 'ASSY-R3-S1', department: 'Assembly' },
-      { name: 'Assembly Line 3 - Station 2 (Stiffener & Hardware)', code: 'ASSY-R3-S2', department: 'Assembly' },
+      {
+        name: 'Parts Preparation Area',
+        code: 'PREP-01',
+        department: 'Parts Prep',
+      },
+      {
+        name: 'Assembly Line 1 - Station 1 (Perimeter Frame)',
+        code: 'ASSY-R1-S1',
+        department: 'Assembly',
+      },
+      {
+        name: 'Assembly Line 1 - Station 2 (Stiffener & Hardware)',
+        code: 'ASSY-R1-S2',
+        department: 'Assembly',
+      },
+      {
+        name: 'Assembly Line 1 - Station 3 (Final Gasketing)',
+        code: 'ASSY-R1-S3',
+        department: 'Assembly',
+      },
+      {
+        name: 'Assembly Line 2 - Station 1 (Perimeter Frame)',
+        code: 'ASSY-R2-S1',
+        department: 'Assembly',
+      },
+      {
+        name: 'Assembly Line 2 - Station 2 (Stiffener & Hardware)',
+        code: 'ASSY-R2-S2',
+        department: 'Assembly',
+      },
+      {
+        name: 'Assembly Line 2 - Station 3 (Final Gasketing)',
+        code: 'ASSY-R2-S3',
+        department: 'Assembly',
+      },
+      {
+        name: 'Assembly Line 3 - Station 1 (Perimeter Frame)',
+        code: 'ASSY-R3-S1',
+        department: 'Assembly',
+      },
+      {
+        name: 'Assembly Line 3 - Station 2 (Stiffener & Hardware)',
+        code: 'ASSY-R3-S2',
+        department: 'Assembly',
+      },
       { name: 'Quality Inspection Area', code: 'QC-01', department: 'QC' },
-      { name: 'Palletizing & Staging Dock', code: 'PAL-01', department: 'Palletizing' },
-      { name: 'Packaging & Shipping Dock', code: 'SHIP-01', department: 'Shipping' },
+      {
+        name: 'Palletizing & Staging Dock',
+        code: 'PAL-01',
+        department: 'Palletizing',
+      },
+      {
+        name: 'Packaging & Shipping Dock',
+        code: 'SHIP-01',
+        department: 'Shipping',
+      },
     ]
 
     const workstationMap: Record<string, string> = {}
@@ -107,7 +169,9 @@ export async function ensureSystemFoundationPopulated(
       let [existing] = await db
         .select()
         .from(workstations)
-        .where(and(eq(workstations.siteId, site.id), eq(workstations.code, s.code)))
+        .where(
+          and(eq(workstations.siteId, site.id), eq(workstations.code, s.code)),
+        )
         .limit(1)
 
       if (!existing) {
@@ -127,11 +191,36 @@ export async function ensureSystemFoundationPopulated(
 
     // 4. Ensure Operation Definitions
     const opDefs = [
-      { code: 'OP-CNC', name: 'CNC Panel Routing & V-Grooving', department: 'CNC', sequence: 10 },
-      { code: 'OP-ELU', name: 'ELU Extrusion Cutting', department: 'ELU', sequence: 20 },
-      { code: 'OP-PREP', name: 'Parts Prep & Flange Pre-Drill', department: 'Parts Prep', sequence: 30 },
-      { code: 'OP-ASSY', name: 'Panel Frame Assembly & Gasketing', department: 'Assembly', sequence: 40 },
-      { code: 'OP-PACK', name: 'Final Inspection & Packaging', department: 'Shipping', sequence: 50 },
+      {
+        code: 'OP-CNC',
+        name: 'CNC Panel Routing & V-Grooving',
+        department: 'CNC',
+        sequence: 10,
+      },
+      {
+        code: 'OP-ELU',
+        name: 'ELU Extrusion Cutting',
+        department: 'ELU',
+        sequence: 20,
+      },
+      {
+        code: 'OP-PREP',
+        name: 'Parts Prep & Flange Pre-Drill',
+        department: 'Parts Prep',
+        sequence: 30,
+      },
+      {
+        code: 'OP-ASSY',
+        name: 'Panel Frame Assembly & Gasketing',
+        department: 'Assembly',
+        sequence: 40,
+      },
+      {
+        code: 'OP-PACK',
+        name: 'Final Inspection & Packaging',
+        department: 'Shipping',
+        sequence: 50,
+      },
     ]
 
     const opDefMap: Record<string, string> = {}
@@ -164,13 +253,48 @@ export async function ensureSystemFoundationPopulated(
 
     // 5. Ensure Inventory Locations
     const defaultLocations = [
-      { code: 'BAY-A1', name: 'Warehouse Bay A-01 (ACM Sheets)', zone: 'Raw Materials', type: 'Storage' },
-      { code: 'BAY-A2', name: 'Warehouse Bay A-02 (ACM Accent Sheets)', zone: 'Raw Materials', type: 'Storage' },
-      { code: 'BAY-B1', name: 'Warehouse Bay B-01 (Specialty Cladding)', zone: 'Raw Materials', type: 'Storage' },
-      { code: 'RACK-EXT-01', name: 'Extrusion Cantilever Rack 01', zone: 'Extrusions', type: 'Storage' },
-      { code: 'BIN-HW-01', name: 'Hardware Bins Row 1', zone: 'Hardware', type: 'Storage' },
-      { code: 'STAGE-01', name: 'Pallet Staging Bay 01', zone: 'Staging', type: 'Staging' },
-      { code: 'SHIP-DOCK-01', name: 'Shipping Dock A', zone: 'Shipping', type: 'Shipping' },
+      {
+        code: 'BAY-A1',
+        name: 'Warehouse Bay A-01 (ACM Sheets)',
+        zone: 'Raw Materials',
+        type: 'Storage',
+      },
+      {
+        code: 'BAY-A2',
+        name: 'Warehouse Bay A-02 (ACM Accent Sheets)',
+        zone: 'Raw Materials',
+        type: 'Storage',
+      },
+      {
+        code: 'BAY-B1',
+        name: 'Warehouse Bay B-01 (Specialty Cladding)',
+        zone: 'Raw Materials',
+        type: 'Storage',
+      },
+      {
+        code: 'RACK-EXT-01',
+        name: 'Extrusion Cantilever Rack 01',
+        zone: 'Extrusions',
+        type: 'Storage',
+      },
+      {
+        code: 'BIN-HW-01',
+        name: 'Hardware Bins Row 1',
+        zone: 'Hardware',
+        type: 'Storage',
+      },
+      {
+        code: 'STAGE-01',
+        name: 'Pallet Staging Bay 01',
+        zone: 'Staging',
+        type: 'Staging',
+      },
+      {
+        code: 'SHIP-DOCK-01',
+        name: 'Shipping Dock A',
+        zone: 'Shipping',
+        type: 'Shipping',
+      },
     ]
 
     const locationMap: Record<string, string> = {}
@@ -223,7 +347,8 @@ export async function ensureSystemFoundationPopulated(
       {
         itemNumber: 'ACM-BS-48120',
         materialFamily: 'ACM',
-        description: '4mm ACM Panel Sheet — Bright Silver Metallic (48" × 120")',
+        description:
+          '4mm ACM Panel Sheet — Bright Silver Metallic (48" × 120")',
         manufacturer: 'Mitsubishi Chemical America',
         color: 'Bright Silver Metallic',
         finish: 'Metallic PVDF',
@@ -308,7 +433,8 @@ export async function ensureSystemFoundationPopulated(
       {
         itemNumber: 'SWISS-BO-4896',
         materialFamily: 'Swisspearl',
-        description: '8mm Swisspearl Fiber Cement Panel — Carat Black Opal (48" × 96")',
+        description:
+          '8mm Swisspearl Fiber Cement Panel — Carat Black Opal (48" × 96")',
         manufacturer: 'Swisspearl North America',
         color: 'Black Opal',
         finish: 'Hydrophobic Matte',
@@ -432,7 +558,8 @@ export async function ensureSystemFoundationPopulated(
           })
           .returning()
 
-        const targetLocId = locationMap[item.locationCode] || Object.values(locationMap)[0]
+        const targetLocId =
+          locationMap[item.locationCode] || Object.values(locationMap)[0]
         if (targetLocId && adminUser) {
           await db.insert(inventoryTransactions).values({
             organizationId: orgId,
@@ -506,16 +633,55 @@ export async function ensureSystemFoundationPopulated(
       .limit(1)
 
     if (existingJobs.length === 0) {
-      console.log('Auto-populating 7 rich showcase releases for organization:', orgId)
+      console.log(
+        'Auto-populating 7 rich showcase releases for organization:',
+        orgId,
+      )
 
       // Customers & Projects
       const customerData = [
-        { code: 'APEX', name: 'Apex Facades & Glazing', projCode: 'TG-PH2', projName: 'Tempe Gateway Commercial Center Phase II', loc: 'Tempe, AZ' },
-        { code: 'MILEHIGH', name: 'Mile High Cladding Partners', projCode: 'DH-MED', projName: 'Denver Health Pavilion & Medical Arts', loc: 'Denver, CO' },
-        { code: 'FRONTRANGE', name: 'Front Range Architectural Fabricators', projCode: 'BTC-B', projName: 'Boulder Tech Campus Building B', loc: 'Boulder, CO' },
-        { code: 'WASATCH', name: 'Wasatch Exterior Systems', projCode: 'SLC-CANOPY', projName: 'Salt Lake City Civic Center Canopy', loc: 'Salt Lake City, UT' },
-        { code: 'SUMMIT', name: 'Summit Alpine Enclosures', projCode: 'AH-LODGE', projName: 'Aspen Highlands Mountain Lodge', loc: 'Aspen, CO' },
-        { code: 'SKYLINE', name: 'Skyline Building Envelope Inc.', projCode: 'CCP-TOWER', projName: 'Cherry Creek Plaza Tower', loc: 'Denver, CO' },
+        {
+          code: 'APEX',
+          name: 'Apex Facades & Glazing',
+          projCode: 'TG-PH2',
+          projName: 'Tempe Gateway Commercial Center Phase II',
+          loc: 'Tempe, AZ',
+        },
+        {
+          code: 'MILEHIGH',
+          name: 'Mile High Cladding Partners',
+          projCode: 'DH-MED',
+          projName: 'Denver Health Pavilion & Medical Arts',
+          loc: 'Denver, CO',
+        },
+        {
+          code: 'FRONTRANGE',
+          name: 'Front Range Architectural Fabricators',
+          projCode: 'BTC-B',
+          projName: 'Boulder Tech Campus Building B',
+          loc: 'Boulder, CO',
+        },
+        {
+          code: 'WASATCH',
+          name: 'Wasatch Exterior Systems',
+          projCode: 'SLC-CANOPY',
+          projName: 'Salt Lake City Civic Center Canopy',
+          loc: 'Salt Lake City, UT',
+        },
+        {
+          code: 'SUMMIT',
+          name: 'Summit Alpine Enclosures',
+          projCode: 'AH-LODGE',
+          projName: 'Aspen Highlands Mountain Lodge',
+          loc: 'Aspen, CO',
+        },
+        {
+          code: 'SKYLINE',
+          name: 'Skyline Building Envelope Inc.',
+          projCode: 'CCP-TOWER',
+          projName: 'Cherry Creek Plaza Tower',
+          loc: 'Denver, CO',
+        },
       ]
 
       const customerMap: Record<string, { custId: string; projId: string }> = {}
@@ -523,7 +689,12 @@ export async function ensureSystemFoundationPopulated(
         let [cust] = await db
           .select()
           .from(customers)
-          .where(and(eq(customers.organizationId, orgId), eq(customers.code, c.code)))
+          .where(
+            and(
+              eq(customers.organizationId, orgId),
+              eq(customers.code, c.code),
+            ),
+          )
           .limit(1)
 
         if (!cust) {
@@ -542,7 +713,12 @@ export async function ensureSystemFoundationPopulated(
         let [proj] = await db
           .select()
           .from(projects)
-          .where(and(eq(projects.organizationId, orgId), eq(projects.code, c.projCode)))
+          .where(
+            and(
+              eq(projects.organizationId, orgId),
+              eq(projects.code, c.projCode),
+            ),
+          )
           .limit(1)
 
         if (!proj) {
@@ -599,15 +775,78 @@ export async function ensureSystemFoundationPopulated(
         .returning()
 
       const r1Marks = [
-        { mark: 'P-101', count: 4, width: '48.00', height: '96.00', color: 'Charcoal Grey', type: 'ACM Field Panel' },
-        { mark: 'P-102', count: 4, width: '48.00', height: '96.00', color: 'Charcoal Grey', type: 'ACM Field Panel' },
-        { mark: 'P-103', count: 4, width: '48.00', height: '120.00', color: 'Bright Silver', type: 'ACM Spandrel' },
-        { mark: 'P-104', count: 2, width: '48.00', height: '120.00', color: 'Bright Silver', type: 'ACM Parapet' },
-        { mark: 'P-105', count: 3, width: '36.00', height: '96.00', color: 'Charcoal Grey', type: 'ACM Window Return' },
-        { mark: 'P-106', count: 3, width: '36.00', height: '96.00', color: 'Charcoal Grey', type: 'ACM Window Return' },
-        { mark: 'P-107', count: 2, width: '60.00', height: '120.00', color: 'Bone White', type: 'ACM Soffit' },
-        { mark: 'C-201', count: 4, width: '24.00', height: '96.00', color: 'Charcoal Grey', type: 'ACM Corner' },
-        { mark: 'S-301', count: 6, width: '30.00', height: '72.00', color: 'Classic Bronze', type: 'ACM Soffit' },
+        {
+          mark: 'P-101',
+          count: 4,
+          width: '48.00',
+          height: '96.00',
+          color: 'Charcoal Grey',
+          type: 'ACM Field Panel',
+        },
+        {
+          mark: 'P-102',
+          count: 4,
+          width: '48.00',
+          height: '96.00',
+          color: 'Charcoal Grey',
+          type: 'ACM Field Panel',
+        },
+        {
+          mark: 'P-103',
+          count: 4,
+          width: '48.00',
+          height: '120.00',
+          color: 'Bright Silver',
+          type: 'ACM Spandrel',
+        },
+        {
+          mark: 'P-104',
+          count: 2,
+          width: '48.00',
+          height: '120.00',
+          color: 'Bright Silver',
+          type: 'ACM Parapet',
+        },
+        {
+          mark: 'P-105',
+          count: 3,
+          width: '36.00',
+          height: '96.00',
+          color: 'Charcoal Grey',
+          type: 'ACM Window Return',
+        },
+        {
+          mark: 'P-106',
+          count: 3,
+          width: '36.00',
+          height: '96.00',
+          color: 'Charcoal Grey',
+          type: 'ACM Window Return',
+        },
+        {
+          mark: 'P-107',
+          count: 2,
+          width: '60.00',
+          height: '120.00',
+          color: 'Bone White',
+          type: 'ACM Soffit',
+        },
+        {
+          mark: 'C-201',
+          count: 4,
+          width: '24.00',
+          height: '96.00',
+          color: 'Charcoal Grey',
+          type: 'ACM Corner',
+        },
+        {
+          mark: 'S-301',
+          count: 6,
+          width: '30.00',
+          height: '72.00',
+          color: 'Classic Bronze',
+          type: 'ACM Soffit',
+        },
       ]
 
       const r1SavedMarks: Record<string, string> = {}
@@ -642,7 +881,16 @@ export async function ensureSystemFoundationPopulated(
             releaseRevisionId: rev25036_1.id,
             panelMarkId: saved.id,
             operationDefinitionId: opDefMap[opCode],
-            sequence: opCode === 'OP-CNC' ? 10 : opCode === 'OP-ELU' ? 20 : opCode === 'OP-PREP' ? 30 : opCode === 'OP-ASSY' ? 40 : 50,
+            sequence:
+              opCode === 'OP-CNC'
+                ? 10
+                : opCode === 'OP-ELU'
+                  ? 20
+                  : opCode === 'OP-PREP'
+                    ? 30
+                    : opCode === 'OP-ASSY'
+                      ? 40
+                      : 50,
             assignedWorkstationId: workstationMap[wsCode],
             status: 'Completed',
             plannedQuantity: pm.count,
@@ -683,9 +931,24 @@ export async function ensureSystemFoundationPopulated(
         .returning()
 
       await db.insert(palletItems).values([
-        { organizationId: orgId, palletId: pal1.id, panelMarkId: r1SavedMarks['P-101'], quantity: 4 },
-        { organizationId: orgId, palletId: pal1.id, panelMarkId: r1SavedMarks['P-102'], quantity: 4 },
-        { organizationId: orgId, palletId: pal2.id, panelMarkId: r1SavedMarks['P-103'], quantity: 4 },
+        {
+          organizationId: orgId,
+          palletId: pal1.id,
+          panelMarkId: r1SavedMarks['P-101'],
+          quantity: 4,
+        },
+        {
+          organizationId: orgId,
+          palletId: pal1.id,
+          panelMarkId: r1SavedMarks['P-102'],
+          quantity: 4,
+        },
+        {
+          organizationId: orgId,
+          palletId: pal2.id,
+          panelMarkId: r1SavedMarks['P-103'],
+          quantity: 4,
+        },
       ])
 
       const [shp1] = await db
@@ -695,7 +958,8 @@ export async function ensureSystemFoundationPopulated(
           shipmentNumber: 'SHP-25036-001',
           carrier: 'Ellwood Dedicated Logistics',
           bolNumber: 'BOL-25036-001',
-          destinationAddress: 'Tempe Gateway Phase II, 400 E Rio Salado Pkwy, Tempe, AZ',
+          destinationAddress:
+            'Tempe Gateway Phase II, 400 E Rio Salado Pkwy, Tempe, AZ',
           status: 'Dispatched',
           totalWeightLbs: '640.00',
           totalPallets: 1,
@@ -779,10 +1043,38 @@ export async function ensureSystemFoundationPopulated(
         .returning()
 
       const r2Marks = [
-        { mark: 'P-201', count: 6, width: '48.00', height: '96.00', color: 'Charcoal Grey', type: 'ACM Parapet' },
-        { mark: 'P-202', count: 4, width: '48.00', height: '120.00', color: 'Bright Silver', type: 'ACM Spandrel' },
-        { mark: 'C-203', count: 2, width: '24.00', height: '96.00', color: 'Charcoal Grey', type: 'ACM Corner' },
-        { mark: 'S-205', count: 4, width: '30.00', height: '72.00', color: 'Classic Bronze', type: 'ACM Soffit' },
+        {
+          mark: 'P-201',
+          count: 6,
+          width: '48.00',
+          height: '96.00',
+          color: 'Charcoal Grey',
+          type: 'ACM Parapet',
+        },
+        {
+          mark: 'P-202',
+          count: 4,
+          width: '48.00',
+          height: '120.00',
+          color: 'Bright Silver',
+          type: 'ACM Spandrel',
+        },
+        {
+          mark: 'C-203',
+          count: 2,
+          width: '24.00',
+          height: '96.00',
+          color: 'Charcoal Grey',
+          type: 'ACM Corner',
+        },
+        {
+          mark: 'S-205',
+          count: 4,
+          width: '30.00',
+          height: '72.00',
+          color: 'Classic Bronze',
+          type: 'ACM Soffit',
+        },
       ]
 
       for (const pm of r2Marks) {
@@ -804,11 +1096,61 @@ export async function ensureSystemFoundationPopulated(
           .returning()
 
         await db.insert(operationInstances).values([
-          { organizationId: orgId, releaseRevisionId: rev25036_2.id, panelMarkId: saved.id, operationDefinitionId: opDefMap['OP-CNC'], sequence: 10, assignedWorkstationId: workstationMap['CNC-01'], status: 'Completed', plannedQuantity: pm.count, completedQuantity: pm.count },
-          { organizationId: orgId, releaseRevisionId: rev25036_2.id, panelMarkId: saved.id, operationDefinitionId: opDefMap['OP-ELU'], sequence: 20, assignedWorkstationId: workstationMap['ELU-01'], status: 'Completed', plannedQuantity: pm.count, completedQuantity: pm.count },
-          { organizationId: orgId, releaseRevisionId: rev25036_2.id, panelMarkId: saved.id, operationDefinitionId: opDefMap['OP-PREP'], sequence: 30, assignedWorkstationId: workstationMap['PREP-01'], status: 'Completed', plannedQuantity: pm.count, completedQuantity: pm.count },
-          { organizationId: orgId, releaseRevisionId: rev25036_2.id, panelMarkId: saved.id, operationDefinitionId: opDefMap['OP-ASSY'], sequence: 40, assignedWorkstationId: workstationMap['ASSY-R1-S2'], status: 'Completed', plannedQuantity: pm.count, completedQuantity: pm.count },
-          { organizationId: orgId, releaseRevisionId: rev25036_2.id, panelMarkId: saved.id, operationDefinitionId: opDefMap['OP-PACK'], sequence: 50, assignedWorkstationId: workstationMap['SHIP-01'], status: 'In progress', plannedQuantity: pm.count, completedQuantity: 0 },
+          {
+            organizationId: orgId,
+            releaseRevisionId: rev25036_2.id,
+            panelMarkId: saved.id,
+            operationDefinitionId: opDefMap['OP-CNC'],
+            sequence: 10,
+            assignedWorkstationId: workstationMap['CNC-01'],
+            status: 'Completed',
+            plannedQuantity: pm.count,
+            completedQuantity: pm.count,
+          },
+          {
+            organizationId: orgId,
+            releaseRevisionId: rev25036_2.id,
+            panelMarkId: saved.id,
+            operationDefinitionId: opDefMap['OP-ELU'],
+            sequence: 20,
+            assignedWorkstationId: workstationMap['ELU-01'],
+            status: 'Completed',
+            plannedQuantity: pm.count,
+            completedQuantity: pm.count,
+          },
+          {
+            organizationId: orgId,
+            releaseRevisionId: rev25036_2.id,
+            panelMarkId: saved.id,
+            operationDefinitionId: opDefMap['OP-PREP'],
+            sequence: 30,
+            assignedWorkstationId: workstationMap['PREP-01'],
+            status: 'Completed',
+            plannedQuantity: pm.count,
+            completedQuantity: pm.count,
+          },
+          {
+            organizationId: orgId,
+            releaseRevisionId: rev25036_2.id,
+            panelMarkId: saved.id,
+            operationDefinitionId: opDefMap['OP-ASSY'],
+            sequence: 40,
+            assignedWorkstationId: workstationMap['ASSY-R1-S2'],
+            status: 'Completed',
+            plannedQuantity: pm.count,
+            completedQuantity: pm.count,
+          },
+          {
+            organizationId: orgId,
+            releaseRevisionId: rev25036_2.id,
+            panelMarkId: saved.id,
+            operationDefinitionId: opDefMap['OP-PACK'],
+            sequence: 50,
+            assignedWorkstationId: workstationMap['SHIP-01'],
+            status: 'In progress',
+            plannedQuantity: pm.count,
+            completedQuantity: 0,
+          },
         ])
       }
 
@@ -851,10 +1193,38 @@ export async function ensureSystemFoundationPopulated(
         .returning()
 
       const r3Marks = [
-        { mark: 'DH-101', count: 4, width: '48.00', height: '108.00', color: 'Bone White', type: 'ACM Clinical Wall' },
-        { mark: 'DH-102', count: 4, width: '48.00', height: '108.00', color: 'Slate Blue', type: 'ACM Accent Band' },
-        { mark: 'DH-103', count: 4, width: '48.00', height: '96.00', color: 'Bone White', type: 'ACM Window Jamb' },
-        { mark: 'DH-104', count: 3, width: '36.00', height: '120.00', color: 'Slate Blue', type: 'ACM Entrance Pylon' },
+        {
+          mark: 'DH-101',
+          count: 4,
+          width: '48.00',
+          height: '108.00',
+          color: 'Bone White',
+          type: 'ACM Clinical Wall',
+        },
+        {
+          mark: 'DH-102',
+          count: 4,
+          width: '48.00',
+          height: '108.00',
+          color: 'Slate Blue',
+          type: 'ACM Accent Band',
+        },
+        {
+          mark: 'DH-103',
+          count: 4,
+          width: '48.00',
+          height: '96.00',
+          color: 'Bone White',
+          type: 'ACM Window Jamb',
+        },
+        {
+          mark: 'DH-104',
+          count: 3,
+          width: '36.00',
+          height: '120.00',
+          color: 'Slate Blue',
+          type: 'ACM Entrance Pylon',
+        },
       ]
 
       for (const pm of r3Marks) {
@@ -876,11 +1246,61 @@ export async function ensureSystemFoundationPopulated(
           .returning()
 
         await db.insert(operationInstances).values([
-          { organizationId: orgId, releaseRevisionId: rev25042_1.id, panelMarkId: saved.id, operationDefinitionId: opDefMap['OP-CNC'], sequence: 10, assignedWorkstationId: workstationMap['CNC-02'], status: 'Completed', plannedQuantity: pm.count, completedQuantity: pm.count },
-          { organizationId: orgId, releaseRevisionId: rev25042_1.id, panelMarkId: saved.id, operationDefinitionId: opDefMap['OP-ELU'], sequence: 20, assignedWorkstationId: workstationMap['ELU-01'], status: 'Completed', plannedQuantity: pm.count, completedQuantity: pm.count },
-          { organizationId: orgId, releaseRevisionId: rev25042_1.id, panelMarkId: saved.id, operationDefinitionId: opDefMap['OP-PREP'], sequence: 30, assignedWorkstationId: workstationMap['PREP-01'], status: 'Completed', plannedQuantity: pm.count, completedQuantity: pm.count },
-          { organizationId: orgId, releaseRevisionId: rev25042_1.id, panelMarkId: saved.id, operationDefinitionId: opDefMap['OP-ASSY'], sequence: 40, assignedWorkstationId: workstationMap['ASSY-R2-S1'], status: pm.mark === 'DH-101' ? 'Completed' : 'In progress', plannedQuantity: pm.count, completedQuantity: pm.mark === 'DH-101' ? pm.count : 2 },
-          { organizationId: orgId, releaseRevisionId: rev25042_1.id, panelMarkId: saved.id, operationDefinitionId: opDefMap['OP-PACK'], sequence: 50, assignedWorkstationId: workstationMap['SHIP-01'], status: 'Pending', plannedQuantity: pm.count, completedQuantity: 0 },
+          {
+            organizationId: orgId,
+            releaseRevisionId: rev25042_1.id,
+            panelMarkId: saved.id,
+            operationDefinitionId: opDefMap['OP-CNC'],
+            sequence: 10,
+            assignedWorkstationId: workstationMap['CNC-02'],
+            status: 'Completed',
+            plannedQuantity: pm.count,
+            completedQuantity: pm.count,
+          },
+          {
+            organizationId: orgId,
+            releaseRevisionId: rev25042_1.id,
+            panelMarkId: saved.id,
+            operationDefinitionId: opDefMap['OP-ELU'],
+            sequence: 20,
+            assignedWorkstationId: workstationMap['ELU-01'],
+            status: 'Completed',
+            plannedQuantity: pm.count,
+            completedQuantity: pm.count,
+          },
+          {
+            organizationId: orgId,
+            releaseRevisionId: rev25042_1.id,
+            panelMarkId: saved.id,
+            operationDefinitionId: opDefMap['OP-PREP'],
+            sequence: 30,
+            assignedWorkstationId: workstationMap['PREP-01'],
+            status: 'Completed',
+            plannedQuantity: pm.count,
+            completedQuantity: pm.count,
+          },
+          {
+            organizationId: orgId,
+            releaseRevisionId: rev25042_1.id,
+            panelMarkId: saved.id,
+            operationDefinitionId: opDefMap['OP-ASSY'],
+            sequence: 40,
+            assignedWorkstationId: workstationMap['ASSY-R2-S1'],
+            status: pm.mark === 'DH-101' ? 'Completed' : 'In progress',
+            plannedQuantity: pm.count,
+            completedQuantity: pm.mark === 'DH-101' ? pm.count : 2,
+          },
+          {
+            organizationId: orgId,
+            releaseRevisionId: rev25042_1.id,
+            panelMarkId: saved.id,
+            operationDefinitionId: opDefMap['OP-PACK'],
+            sequence: 50,
+            assignedWorkstationId: workstationMap['SHIP-01'],
+            status: 'Pending',
+            plannedQuantity: pm.count,
+            completedQuantity: 0,
+          },
         ])
       }
 
@@ -923,8 +1343,22 @@ export async function ensureSystemFoundationPopulated(
         .returning()
 
       const r4Marks = [
-        { mark: 'BTC-101', count: 6, width: '60.00', height: '120.00', color: 'Titanium Metallic', type: 'ACM High Bay' },
-        { mark: 'BTC-102', count: 4, width: '48.00', height: '96.00', color: 'Anthracite Grey', type: 'ACM Louver' },
+        {
+          mark: 'BTC-101',
+          count: 6,
+          width: '60.00',
+          height: '120.00',
+          color: 'Titanium Metallic',
+          type: 'ACM High Bay',
+        },
+        {
+          mark: 'BTC-102',
+          count: 4,
+          width: '48.00',
+          height: '96.00',
+          color: 'Anthracite Grey',
+          type: 'ACM Louver',
+        },
       ]
 
       for (const pm of r4Marks) {
@@ -946,11 +1380,61 @@ export async function ensureSystemFoundationPopulated(
           .returning()
 
         await db.insert(operationInstances).values([
-          { organizationId: orgId, releaseRevisionId: rev25048_1.id, panelMarkId: saved.id, operationDefinitionId: opDefMap['OP-CNC'], sequence: 10, assignedWorkstationId: workstationMap['CNC-01'], status: 'In progress', plannedQuantity: pm.count, completedQuantity: pm.mark === 'BTC-101' ? 3 : 0 },
-          { organizationId: orgId, releaseRevisionId: rev25048_1.id, panelMarkId: saved.id, operationDefinitionId: opDefMap['OP-ELU'], sequence: 20, assignedWorkstationId: workstationMap['ELU-02'], status: 'In progress', plannedQuantity: pm.count, completedQuantity: 0 },
-          { organizationId: orgId, releaseRevisionId: rev25048_1.id, panelMarkId: saved.id, operationDefinitionId: opDefMap['OP-PREP'], sequence: 30, assignedWorkstationId: workstationMap['PREP-01'], status: 'Pending', plannedQuantity: pm.count, completedQuantity: 0 },
-          { organizationId: orgId, releaseRevisionId: rev25048_1.id, panelMarkId: saved.id, operationDefinitionId: opDefMap['OP-ASSY'], sequence: 40, assignedWorkstationId: workstationMap['ASSY-R2-S2'], status: 'Pending', plannedQuantity: pm.count, completedQuantity: 0 },
-          { organizationId: orgId, releaseRevisionId: rev25048_1.id, panelMarkId: saved.id, operationDefinitionId: opDefMap['OP-PACK'], sequence: 50, assignedWorkstationId: workstationMap['SHIP-01'], status: 'Pending', plannedQuantity: pm.count, completedQuantity: 0 },
+          {
+            organizationId: orgId,
+            releaseRevisionId: rev25048_1.id,
+            panelMarkId: saved.id,
+            operationDefinitionId: opDefMap['OP-CNC'],
+            sequence: 10,
+            assignedWorkstationId: workstationMap['CNC-01'],
+            status: 'In progress',
+            plannedQuantity: pm.count,
+            completedQuantity: pm.mark === 'BTC-101' ? 3 : 0,
+          },
+          {
+            organizationId: orgId,
+            releaseRevisionId: rev25048_1.id,
+            panelMarkId: saved.id,
+            operationDefinitionId: opDefMap['OP-ELU'],
+            sequence: 20,
+            assignedWorkstationId: workstationMap['ELU-02'],
+            status: 'In progress',
+            plannedQuantity: pm.count,
+            completedQuantity: 0,
+          },
+          {
+            organizationId: orgId,
+            releaseRevisionId: rev25048_1.id,
+            panelMarkId: saved.id,
+            operationDefinitionId: opDefMap['OP-PREP'],
+            sequence: 30,
+            assignedWorkstationId: workstationMap['PREP-01'],
+            status: 'Pending',
+            plannedQuantity: pm.count,
+            completedQuantity: 0,
+          },
+          {
+            organizationId: orgId,
+            releaseRevisionId: rev25048_1.id,
+            panelMarkId: saved.id,
+            operationDefinitionId: opDefMap['OP-ASSY'],
+            sequence: 40,
+            assignedWorkstationId: workstationMap['ASSY-R2-S2'],
+            status: 'Pending',
+            plannedQuantity: pm.count,
+            completedQuantity: 0,
+          },
+          {
+            organizationId: orgId,
+            releaseRevisionId: rev25048_1.id,
+            panelMarkId: saved.id,
+            operationDefinitionId: opDefMap['OP-PACK'],
+            sequence: 50,
+            assignedWorkstationId: workstationMap['SHIP-01'],
+            status: 'Pending',
+            plannedQuantity: pm.count,
+            completedQuantity: 0,
+          },
         ])
       }
 
@@ -986,7 +1470,8 @@ export async function ensureSystemFoundationPopulated(
         revisionLabel: 'A',
         isCurrent: true,
         status: 'Approved',
-        notes: 'Initial engineering package release for civic center entry canopy.',
+        notes:
+          'Initial engineering package release for civic center entry canopy.',
       })
 
       // --- Release 6: Job 25061 - Release 1 (Rev C) [Fiber Cement Rework] ---
@@ -1021,7 +1506,8 @@ export async function ensureSystemFoundationPopulated(
         revisionLabel: 'C',
         isCurrent: true,
         status: 'Approved',
-        notes: 'Rev C: Precision CNC diamond toolpaths for 8mm Swisspearl Carat Black Opal.',
+        notes:
+          'Rev C: Precision CNC diamond toolpaths for 8mm Swisspearl Carat Black Opal.',
       })
 
       // --- Release 7: Job 25070 - Release 1 (Rev A) [Scheduled / Allocated] ---

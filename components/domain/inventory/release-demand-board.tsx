@@ -219,7 +219,9 @@ export function ReleaseDemandBoard({
       )
       onDemandUpdated?.()
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Failed to auto-allocate')
+      setErrorMsg(
+        err instanceof Error ? err.message : 'Failed to auto-allocate',
+      )
     } finally {
       setAllocating(false)
     }

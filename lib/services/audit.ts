@@ -66,6 +66,7 @@ export async function recordAuditEvent(
       ipAddress: input.ipAddress || null,
     })
   } catch (error) {
+    if (tx) throw error
     logger.error('Failed to write audit event', {
       error,
       input,
@@ -95,6 +96,7 @@ export async function recordActivityEvent(
       summary: input.description,
     })
   } catch (error) {
+    if (tx) throw error
     logger.error('Failed to write activity event', {
       error,
       input,

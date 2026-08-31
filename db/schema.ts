@@ -1518,7 +1518,7 @@ export const shipmentPallets = pgTable(
   },
   (table) => [
     index('shipment_pallets_shipment_id_idx').on(table.shipmentId),
-    index('shipment_pallets_pallet_id_idx').on(table.palletId),
+    uniqueIndex('shipment_pallets_pallet_id_unique').on(table.palletId),
   ],
 )
 
@@ -1665,4 +1665,3 @@ export const passkeysRelations = relations(passkeys, ({ one }) => ({
     references: [users.id],
   }),
 }))
-

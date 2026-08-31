@@ -26,10 +26,26 @@ export function EllwoodLogoMark({ className }: { className?: string }) {
         </linearGradient>
       </defs>
       <g transform="translate(6, 4)">
-        <path d="M 8 16 L 46 6 L 68 34 L 30 44 Z" fill="url(#efSymPanel)" opacity="0.95" />
+        <path
+          d="M 8 16 L 46 6 L 68 34 L 30 44 Z"
+          fill="url(#efSymPanel)"
+          opacity="0.95"
+        />
         <path d="M 24 38 L 62 28 L 78 66 L 40 76 Z" fill="url(#efSymOrange)" />
-        <path d="M 12 48 L 36 42 L 48 70 L 24 76 Z" fill="#0063A6" opacity="0.85" />
-        <line x1="24" y1="38" x2="40" y2="76" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" />
+        <path
+          d="M 12 48 L 36 42 L 48 70 L 24 76 Z"
+          fill="#0063A6"
+          opacity="0.85"
+        />
+        <line
+          x1="24"
+          y1="38"
+          x2="40"
+          y2="76"
+          stroke="#FFFFFF"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+        />
       </g>
     </svg>
   )

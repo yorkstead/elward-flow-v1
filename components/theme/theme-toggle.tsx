@@ -84,7 +84,7 @@ export function ThemeToggle({
           onClick={() => setTheme('light')}
           className={cn(
             'flex cursor-pointer items-center justify-between gap-2 px-2.5 py-1.5 text-xs',
-            theme === 'light' && 'font-semibold text-brand-blue',
+            theme === 'light' && 'text-brand-blue font-semibold',
           )}
         >
           <div className="flex items-center gap-2">
@@ -98,7 +98,7 @@ export function ThemeToggle({
           onClick={() => setTheme('dark')}
           className={cn(
             'flex cursor-pointer items-center justify-between gap-2 px-2.5 py-1.5 text-xs',
-            theme === 'dark' && 'font-semibold text-brand-blue',
+            theme === 'dark' && 'text-brand-blue font-semibold',
           )}
         >
           <div className="flex items-center gap-2">
@@ -112,7 +112,7 @@ export function ThemeToggle({
           onClick={() => setTheme('system')}
           className={cn(
             'flex cursor-pointer items-center justify-between gap-2 px-2.5 py-1.5 text-xs',
-            theme === 'system' && 'font-semibold text-brand-blue',
+            theme === 'system' && 'text-brand-blue font-semibold',
           )}
         >
           <div className="flex items-center gap-2">

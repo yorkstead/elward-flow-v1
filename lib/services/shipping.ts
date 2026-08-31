@@ -65,6 +65,11 @@ export interface LoadPalletInput {
   truckPosition?: number
 }
 
+function requireOrganization(context: UserContext) {
+  if (!context.organizationId) throw new Error('Organization context required.')
+  return context.organizationId
+}
+
 export class ShippingService {
   /**
    * Retrieves shipments with loaded pallets count and totals.
@@ -73,8 +78,7 @@ export class ShippingService {
     context: UserContext,
     filters?: { status?: string },
   ): Promise<ShipmentSummary[]> {
-    const orgId =
-      context.organizationId || '00000000-0000-0000-0000-000000000001'
+    const orgId = requireOrganization(context)
 
     const conditions = [eq(shipments.organizationId, orgId)]
     if (filters?.status) {
@@ -196,8 +200,7 @@ export class ShippingService {
     input: CreateShipmentInput,
   ): Promise<ShipmentSummary> {
     requirePermission(context, 'create', 'createShipment')
-    const orgId =
-      context.organizationId || '00000000-0000-0000-0000-000000000001'
+    const orgId = requireOrganization(context)
 
     const existingCount = await db
       .select({ count: sql<number>`count(*)` })
@@ -252,224 +255,300 @@ export class ShippingService {
     input: LoadPalletInput,
   ): Promise<ShipmentSummary> {
     requirePermission(context, 'edit', 'stagePalletOnShipment')
-    const orgId =
-      context.organizationId || '00000000-0000-0000-0000-000000000001'
-
-    const [shipment] = await db
-      .select()
-      .from(shipments)
-      .where(eq(shipments.id, input.shipmentId))
-      .limit(1)
-
-    if (!shipment) throw new Error('Shipment not found')
-    if (shipment.status === 'Dispatched' || shipment.status === 'Delivered') {
-      throw new Error('Cannot modify an already dispatched shipment')
-    }
-
-    const [pallet] = await db
-      .select()
-      .from(pallets)
-      .where(eq(pallets.id, input.palletId))
-      .limit(1)
-
-    if (!pallet) throw new Error('Pallet not found')
-    if (pallet.status === 'Shipped') {
-      throw new Error('Pallet has already been shipped')
-    }
-
-    // Flatbed trailer max weight: 45,000 lbs; max pallets: 26
-    const palletWeight = Number(pallet.currentWeightLbs)
-    const newTotalWeight = Number(shipment.totalWeightLbs) + palletWeight
-    const newTotalPallets = shipment.totalPallets + 1
-
-    if (newTotalWeight > 45000) {
-      throw new Error(
-        `Truck Weight Limit Exceeded: Total load weight would reach ${newTotalWeight.toFixed(1)} lbs (Max legal flatbed: 45,000 lbs).`,
-      )
-    }
-
-    if (newTotalPallets > 26) {
-      throw new Error(
-        `Trailer Space Exceeded: Max trailer capacity is 26 pallets (Current: ${shipment.totalPallets}).`,
-      )
-    }
-
-    const nextPosition = input.truckPosition || newTotalPallets
-
+    const orgId = requireOrganization(context)
     await db.transaction(async (tx) => {
+      const [shipment] = await tx
+        .select()
+        .from(shipments)
+        .where(
+          and(
+            eq(shipments.id, input.shipmentId),
+            eq(shipments.organizationId, orgId),
+          ),
+        )
+        .for('update')
+      if (!shipment) throw new Error('Shipment not found in this organization')
+      if (!['Draft', 'Loading', 'Ready'].includes(shipment.status))
+        throw new Error('Cannot modify a dispatched shipment')
+      const [pallet] = await tx
+        .select()
+        .from(pallets)
+        .where(
+          and(
+            eq(pallets.id, input.palletId),
+            eq(pallets.organizationId, orgId),
+          ),
+        )
+        .for('update')
+      if (!pallet) throw new Error('Pallet not found in this organization')
+      const [existing] = await tx
+        .select()
+        .from(shipmentPallets)
+        .where(eq(shipmentPallets.palletId, pallet.id))
+        .limit(1)
+      if (existing) {
+        if (
+          existing.shipmentId === shipment.id &&
+          (input.truckPosition === undefined ||
+            input.truckPosition === existing.truckPosition)
+        )
+          return
+        throw new Error('Pallet is already assigned to a shipment')
+      }
+      if (!['Complete', 'Completed', 'Staged', 'Ready'].includes(pallet.status))
+        throw new Error('Complete and stage the pallet before loading')
+      const totalWeight =
+        Number(shipment.totalWeightLbs) + Number(pallet.currentWeightLbs)
+      const totalPallets = shipment.totalPallets + 1
+      if (totalWeight > 45000 || totalPallets > 26)
+        throw new Error('Truck weight or pallet capacity exceeded')
+      const loaded = await tx
+        .select()
+        .from(shipmentPallets)
+        .where(eq(shipmentPallets.shipmentId, shipment.id))
+      const occupied = new Set(loaded.map((p) => p.truckPosition))
+      const position =
+        input.truckPosition ??
+        Array.from({ length: 26 }, (_, i) => i + 1).find(
+          (p) => !occupied.has(p),
+        )
+      if (
+        !position ||
+        !Number.isInteger(position) ||
+        position < 1 ||
+        position > 26 ||
+        occupied.has(position)
+      )
+        throw new Error('Invalid or occupied truck position')
       await tx.insert(shipmentPallets).values({
         organizationId: orgId,
-        shipmentId: input.shipmentId,
-        palletId: input.palletId,
-        truckPosition: nextPosition,
+        shipmentId: shipment.id,
+        palletId: pallet.id,
+        truckPosition: position,
         loadedById: context.userId,
       })
-
       await tx
         .update(shipments)
         .set({
-          totalPallets: newTotalPallets,
-          totalWeightLbs: String(newTotalWeight.toFixed(2)),
+          totalPallets,
+          totalWeightLbs: totalWeight.toFixed(2),
           status: 'Loading',
           updatedAt: new Date(),
         })
-        .where(eq(shipments.id, input.shipmentId))
+        .where(
+          and(
+            eq(shipments.id, shipment.id),
+            eq(shipments.totalPallets, shipment.totalPallets),
+          ),
+        )
+      await recordAuditEvent(
+        context,
+        {
+          action: 'shipment.load_pallet',
+          entityType: 'shipment',
+          entityId: shipment.id,
+          priorState: shipment.status,
+          newState: 'Loading',
+          quantity: pallet.panelCount,
+          details: {
+            palletId: pallet.id,
+            truckPosition: position,
+            loadWeightLbs: totalWeight,
+          },
+        },
+        tx,
+      )
     })
-
-    await recordAuditEvent(context, {
-      action: 'shipment.load_pallet',
-      entityType: 'shipment',
-      entityId: input.shipmentId,
-      quantity: pallet.panelCount,
-      details: {
-        palletId: input.palletId,
-        palletNumber: pallet.palletNumber,
-        truckPosition: nextPosition,
-        loadWeightLbs: newTotalWeight,
-      },
-    })
-
     return (await this.getShipmentById(context, input.shipmentId))!
   }
 
-  /**
-   * Removes a pallet from the shipment load.
-   */
   static async removePalletFromShipment(
     context: UserContext,
     shipmentPalletId: string,
+    expectedShipmentId?: string,
   ): Promise<ShipmentSummary> {
     requirePermission(context, 'edit', 'removePalletFromShipment')
-
-    const [item] = await db
-      .select()
-      .from(shipmentPallets)
-      .where(eq(shipmentPallets.id, shipmentPalletId))
-      .limit(1)
-
-    if (!item) throw new Error('Shipment pallet entry not found')
-
-    const [shipment] = await db
-      .select()
-      .from(shipments)
-      .where(eq(shipments.id, item.shipmentId))
-      .limit(1)
-
-    if (!shipment) throw new Error('Shipment not found')
-    if (shipment.status === 'Dispatched') {
-      throw new Error('Cannot remove pallets from a dispatched shipment')
-    }
-
-    const [pallet] = await db
-      .select()
-      .from(pallets)
-      .where(eq(pallets.id, item.palletId))
-      .limit(1)
-
-    const palletWeight = pallet ? Number(pallet.currentWeightLbs) : 0
-    const newTotalWeight = Math.max(
-      0,
-      Number(shipment.totalWeightLbs) - palletWeight,
-    )
-    const newTotalPallets = Math.max(0, shipment.totalPallets - 1)
-
-    await db.transaction(async (tx) => {
-      await tx
+    const orgId = requireOrganization(context)
+    const shipmentId = await db.transaction(async (tx) => {
+      const [initial] = await tx
+        .select()
+        .from(shipmentPallets)
+        .where(
+          and(
+            eq(shipmentPallets.id, shipmentPalletId),
+            eq(shipmentPallets.organizationId, orgId),
+          ),
+        )
+        .limit(1)
+      if (
+        !initial ||
+        (expectedShipmentId && initial.shipmentId !== expectedShipmentId)
+      )
+        throw new Error('Shipment pallet entry not found')
+      const [shipment] = await tx
+        .select()
+        .from(shipments)
+        .where(
+          and(
+            eq(shipments.id, initial.shipmentId),
+            eq(shipments.organizationId, orgId),
+          ),
+        )
+        .for('update')
+      if (!shipment || !['Draft', 'Loading', 'Ready'].includes(shipment.status))
+        throw new Error('Cannot remove pallets from this shipment')
+      const [pallet] = await tx
+        .select()
+        .from(pallets)
+        .where(
+          and(
+            eq(pallets.id, initial.palletId),
+            eq(pallets.organizationId, orgId),
+          ),
+        )
+        .for('update')
+      if (!pallet) throw new Error('Pallet not found')
+      const [removed] = await tx
         .delete(shipmentPallets)
-        .where(eq(shipmentPallets.id, shipmentPalletId))
-
+        .where(
+          and(
+            eq(shipmentPallets.id, shipmentPalletId),
+            eq(shipmentPallets.organizationId, orgId),
+          ),
+        )
+        .returning()
+      if (!removed) return shipment.id
       await tx
         .update(shipments)
         .set({
-          totalPallets: newTotalPallets,
-          totalWeightLbs: String(newTotalWeight.toFixed(2)),
+          totalPallets: shipment.totalPallets - 1,
+          totalWeightLbs: (
+            Number(shipment.totalWeightLbs) - Number(pallet.currentWeightLbs)
+          ).toFixed(2),
           updatedAt: new Date(),
         })
-        .where(eq(shipments.id, item.shipmentId))
+        .where(eq(shipments.id, shipment.id))
+      await recordAuditEvent(
+        context,
+        {
+          action: 'shipment.remove_pallet',
+          entityType: 'shipment',
+          entityId: shipment.id,
+          quantity: pallet.panelCount,
+          details: { palletId: pallet.id, shipmentPalletId },
+        },
+        tx,
+      )
+      return shipment.id
     })
-
-    await recordAuditEvent(context, {
-      action: 'shipment.remove_pallet',
-      entityType: 'shipment',
-      entityId: item.shipmentId,
-      details: { shipmentPalletId, palletId: item.palletId },
-    })
-
-    return (await this.getShipmentById(context, item.shipmentId))!
+    return (await this.getShipmentById(context, shipmentId))!
   }
 
-  /**
-   * Finalizes and dispatches a shipment, marking pallets and releases as Shipped.
-   */
   static async dispatchShipment(
     context: UserContext,
     input: { shipmentId: string; bolNumber?: string; notes?: string },
   ): Promise<ShipmentSummary> {
     requirePermission(context, 'approve', 'dispatchShipment')
-
-    const shipment = await this.getShipmentById(context, input.shipmentId)
-    if (!shipment) throw new Error('Shipment not found')
-    if (shipment.totalPallets === 0) {
-      throw new Error('Cannot dispatch an empty shipment with 0 pallets loaded')
-    }
-
-    const bolNumber =
-      input.bolNumber ||
-      `BOL-${shipment.shipmentNumber.replace('SHP-', '')}-${Math.floor(1000 + Math.random() * 9000)}`
-
-    const departureTime = new Date()
-
+    const orgId = requireOrganization(context)
     await db.transaction(async (tx) => {
-      // 1. Update Shipment
+      const [shipment] = await tx
+        .select()
+        .from(shipments)
+        .where(
+          and(
+            eq(shipments.id, input.shipmentId),
+            eq(shipments.organizationId, orgId),
+          ),
+        )
+        .for('update')
+      if (!shipment) throw new Error('Shipment not found')
+      if (shipment.status === 'Dispatched') return
+      if (!['Loading', 'Ready'].includes(shipment.status))
+        throw new Error('Shipment is not ready for dispatch')
+      const loaded = await tx
+        .select()
+        .from(shipmentPallets)
+        .where(
+          and(
+            eq(shipmentPallets.shipmentId, shipment.id),
+            eq(shipmentPallets.organizationId, orgId),
+          ),
+        )
+      if (loaded.length === 0 || loaded.length !== shipment.totalPallets)
+        throw new Error('Shipment load count is empty or inconsistent')
+      const palletIds = loaded.map((p) => p.palletId)
+      const loadedPallets = await tx
+        .select()
+        .from(pallets)
+        .where(
+          and(
+            inArray(pallets.id, palletIds),
+            eq(pallets.organizationId, orgId),
+          ),
+        )
+        .orderBy(pallets.id)
+        .for('update')
+      if (
+        loadedPallets.length !== loaded.length ||
+        loadedPallets.some(
+          (p) =>
+            !['Complete', 'Completed', 'Staged', 'Ready'].includes(p.status),
+        )
+      )
+        throw new Error('All pallets must be complete and staged')
+      const actualWeight = loadedPallets.reduce(
+        (sum, p) => sum + Number(p.currentWeightLbs),
+        0,
+      )
+      if (actualWeight > 45000 || loaded.length > 26)
+        throw new Error('Truck capacity exceeded')
+      const departure = new Date()
+      const bolNumber = input.bolNumber || `BOL-${shipment.shipmentNumber}`
       await tx
         .update(shipments)
         .set({
           status: 'Dispatched',
           bolNumber,
-          actualDeparture: departureTime,
+          actualDeparture: departure,
           dispatchedById: context.userId,
           notes: input.notes || shipment.notes,
-          updatedAt: departureTime,
+          totalWeightLbs: actualWeight.toFixed(2),
+          updatedAt: departure,
         })
-        .where(eq(shipments.id, input.shipmentId))
-
-      // 2. Mark all included pallets as Shipped
-      const palletIds = (shipment.pallets || []).map((p) => p.palletId)
-      if (palletIds.length > 0) {
-        await tx
-          .update(pallets)
-          .set({
-            status: 'Shipped',
-            updatedAt: departureTime,
-          })
-          .where(inArray(pallets.id, palletIds))
-      }
+        .where(eq(shipments.id, shipment.id))
+      await tx
+        .update(pallets)
+        .set({ status: 'Shipped', updatedAt: departure })
+        .where(
+          and(
+            inArray(pallets.id, palletIds),
+            eq(pallets.organizationId, orgId),
+          ),
+        )
+      await recordAuditEvent(
+        context,
+        {
+          action: 'shipment.dispatch',
+          entityType: 'shipment',
+          entityId: shipment.id,
+          priorState: shipment.status,
+          newState: 'Dispatched',
+          quantity: loaded.length,
+          details: { bolNumber, totalWeightLbs: actualWeight },
+        },
+        tx,
+      )
+      await recordActivityEvent(
+        context,
+        {
+          action: 'shipment_dispatched',
+          entityType: 'shipment',
+          entityId: shipment.id,
+          description: `Shipment ${shipment.shipmentNumber} dispatched with ${loaded.length} pallets`,
+        },
+        tx,
+      )
     })
-
-    await recordAuditEvent(context, {
-      action: 'shipment.dispatch',
-      entityType: 'shipment',
-      entityId: input.shipmentId,
-      priorState: shipment.status,
-      newState: 'Dispatched',
-      quantity: shipment.totalPallets,
-      details: {
-        bolNumber,
-        carrier: shipment.carrier,
-        trailerNumber: shipment.trailerNumber,
-        palletsCount: shipment.totalPallets,
-        totalPanels: shipment.totalPanels,
-        totalWeightLbs: shipment.totalWeightLbs,
-      },
-    })
-
-    await recordActivityEvent(context, {
-      action: 'shipment_dispatched',
-      entityType: 'shipment',
-      entityId: input.shipmentId,
-      description: `Shipment ${shipment.shipmentNumber} dispatched via ${shipment.carrier} with ${shipment.totalPallets} pallets (${shipment.totalPanels} panels). BOL: ${bolNumber}`,
-    })
-
     return (await this.getShipmentById(context, input.shipmentId))!
   }
 

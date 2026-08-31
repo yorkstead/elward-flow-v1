@@ -639,7 +639,9 @@ export function AdminDashboardView({
                                   : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
                               }`}
                               title={
-                                isDisabled ? 'Enable user login' : 'Disable user login'
+                                isDisabled
+                                  ? 'Enable user login'
+                                  : 'Disable user login'
                               }
                             >
                               {isLoading ? (
@@ -942,7 +944,7 @@ export function AdminDashboardView({
       {/* TAB 5: PASSKEYS & BIOMETRIC SECURITY */}
       {activeTab === 'passkeys' && (
         <div className="space-y-4">
-          <Card className="p-6 border-slate-200 bg-white shadow-xs">
+          <Card className="border-slate-200 bg-white p-6 shadow-xs">
             <PasskeyManager />
           </Card>
         </div>
@@ -1473,7 +1475,10 @@ export function AdminDashboardView({
                   checked={editUserIsAdmin}
                   onChange={(e) => setEditUserIsAdmin(e.target.checked)}
                 />
-                <label htmlFor="editIsAdmin" className="font-bold text-slate-800">
+                <label
+                  htmlFor="editIsAdmin"
+                  className="font-bold text-slate-800"
+                >
                   Grant Full Administrator Privilege
                 </label>
               </div>

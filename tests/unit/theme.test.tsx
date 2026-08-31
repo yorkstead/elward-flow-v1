@@ -8,7 +8,10 @@ import {
   THEME_INIT_SCRIPT,
   STORAGE_KEY,
 } from '@/components/theme/theme-provider'
-import { ThemeToggle, ThemeSegmentedControl } from '@/components/theme/theme-toggle'
+import {
+  ThemeToggle,
+  ThemeSegmentedControl,
+} from '@/components/theme/theme-toggle'
 
 describe('Theme System', () => {
   let localStorageMock: Record<string, string>
@@ -43,13 +46,17 @@ describe('Theme System', () => {
       matchMedia: vi.fn((query: string) => ({
         matches: prefersDark,
         media: query,
-        addEventListener: vi.fn((event: string, cb: (e: { matches: boolean }) => void) => {
-          if (event === 'change') matchMediaListeners.push(cb)
-        }),
-        removeEventListener: vi.fn((event: string, cb: (e: { matches: boolean }) => void) => {
-          const idx = matchMediaListeners.indexOf(cb)
-          if (idx !== -1) matchMediaListeners.splice(idx, 1)
-        }),
+        addEventListener: vi.fn(
+          (event: string, cb: (e: { matches: boolean }) => void) => {
+            if (event === 'change') matchMediaListeners.push(cb)
+          },
+        ),
+        removeEventListener: vi.fn(
+          (event: string, cb: (e: { matches: boolean }) => void) => {
+            const idx = matchMediaListeners.indexOf(cb)
+            if (idx !== -1) matchMediaListeners.splice(idx, 1)
+          },
+        ),
       })),
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
@@ -73,8 +80,10 @@ describe('Theme System', () => {
 
   it('provides the default theme init script that handles system preference', () => {
     expect(THEME_INIT_SCRIPT).toContain(STORAGE_KEY)
-    expect(THEME_INIT_SCRIPT).toContain("localStorage.getItem(k)")
-    expect(THEME_INIT_SCRIPT).toContain("window.matchMedia('(prefers-color-scheme: dark)').matches")
+    expect(THEME_INIT_SCRIPT).toContain('localStorage.getItem(k)')
+    expect(THEME_INIT_SCRIPT).toContain(
+      "window.matchMedia('(prefers-color-scheme: dark)').matches",
+    )
     expect(THEME_INIT_SCRIPT).toContain("classList.add('dark')")
     expect(THEME_INIT_SCRIPT).toContain("classList.remove('dark')")
   })

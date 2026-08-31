@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import { requireE2EAdminPassword } from './support/environment'
+import { createHash } from 'node:crypto'
+import { and, eq, like } from 'drizzle-orm'
+import { db } from '@/db'
+import { storedFiles, users } from '@/db/schema'
 test('redirects unauthorized users and authenticates the local administrator', async ({
   page,
 }) => {
@@ -11,7 +15,7 @@ test('redirects unauthorized users and authenticates the local administrator', a
     .getByLabel('Email')
     .fill(process.env.ADMIN_EMAIL ?? 'admin@example.test')
   await page.getByLabel('Password').fill(password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(page).toHaveURL(/\/dashboard/)
   await expect(
     page.getByText('Active Command Center • Pinned Release'),
@@ -46,4 +50,29 @@ test('redirects unauthorized users and authenticates the local administrator', a
   expect((await download).suggestedFilename()).toBe(
     'fictional-foundation-test.pdf',
   )
+
+  // Check an actual seeded controlled drawing, not just the temporary upload.
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, process.env.ADMIN_EMAIL ?? 'admin@example.test'))
+    .limit(1)
+  const [drawing] = await db
+    .select()
+    .from(storedFiles)
+    .where(
+      and(
+        eq(storedFiles.organizationId, user.organizationId),
+        like(storedFiles.originalName, '%Cut Drawings CNC.pdf'),
+      ),
+    )
+    .limit(1)
+  expect(drawing).toBeTruthy()
+  const controlled = await page.request.get(`/api/files/${drawing.id}`)
+  expect(controlled.status()).toBe(200)
+  expect(
+    createHash('sha256')
+      .update(await controlled.body())
+      .digest('hex'),
+  ).toBe(drawing.sha256)
 })

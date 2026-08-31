@@ -472,25 +472,25 @@ export function ProductionScheduleView({
                 <TableBody>
                   {filteredItems.map((item) => (
                     <TableRow key={item.id} className="text-xs">
-                      <TableCell className="font-bold text-foreground">
+                      <TableCell className="text-foreground font-bold">
                         <div className="flex items-center gap-1.5">
-                          <span className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-sm text-foreground">
+                          <span className="bg-muted text-foreground rounded-md px-1.5 py-0.5 font-mono text-sm">
                             {item.markCode}
                           </span>
-                          <span className="text-[11px] font-semibold text-muted-foreground">
+                          <span className="text-muted-foreground text-[11px] font-semibold">
                             {item.releaseKey}
                           </span>
                         </div>
-                        <div className="mt-0.5 text-[11px] text-muted-foreground">
+                        <div className="text-muted-foreground mt-0.5 text-[11px]">
                           {item.materialFamily} ({item.dimensions || 'Standard'}
                           )
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="font-semibold text-foreground">
+                        <div className="text-foreground font-semibold">
                           {item.operationName}
                         </div>
-                        <div className="text-[11px] text-muted-foreground">
+                        <div className="text-muted-foreground text-[11px]">
                           Seq {item.sequence} • {item.department}
                         </div>
                       </TableCell>
@@ -498,13 +498,13 @@ export function ProductionScheduleView({
                       <TableCell>
                         <div className="space-y-1">
                           {getReadinessBadge(item)}
-                          <div className="text-[11px] font-medium text-muted-foreground">
+                          <div className="text-muted-foreground text-[11px] font-medium">
                             {item.readinessReason}
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="font-mono">
-                        <span className="font-bold text-primary">
+                        <span className="text-primary font-bold">
                           {item.remainingQuantity}
                         </span>
                         <span className="text-muted-foreground">
@@ -512,21 +512,21 @@ export function ProductionScheduleView({
                           / {item.plannedQuantity} pcs
                         </span>
                         {item.scrapQuantity > 0 && (
-                          <div className="text-[10px] font-bold text-destructive">
+                          <div className="text-destructive text-[10px] font-bold">
                             {item.scrapQuantity} scrap
                           </div>
                         )}
                       </TableCell>
                       <TableCell>
                         <div className="space-y-0.5">
-                          <div className="flex items-center gap-1 font-semibold text-foreground">
-                            <MapPin className="h-3 w-3 text-muted-foreground" />
+                          <div className="text-foreground flex items-center gap-1 font-semibold">
+                            <MapPin className="text-muted-foreground h-3 w-3" />
                             <span>
                               {item.assignedWorkstationName || 'Unassigned'}
                             </span>
                           </div>
                           {item.assignedTeam && (
-                            <div className="text-[11px] text-muted-foreground">
+                            <div className="text-muted-foreground text-[11px]">
                               Team: {item.assignedTeam}
                             </div>
                           )}

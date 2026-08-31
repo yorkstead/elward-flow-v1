@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
+import { createReceiptFixture } from './support/inventory-fixture'
 import { requireE2EAdminPassword } from './support/environment'
 
 const ADMIN_EMAIL = 'admin@example.test'
@@ -16,6 +17,10 @@ async function loginAdmin(page: Page) {
 }
 
 test.describe('Inventory, Purchasing, Receiving & Allocations (Prompt 07)', () => {
+  let poNumber: string
+  test.beforeAll(async () => {
+    poNumber = await createReceiptFixture()
+  })
   test('executes stock adjustments, PO receiving with damaged quarantine, demand allocation, and blind cycle counts', async ({
     page,
   }) => {
@@ -31,8 +36,8 @@ test.describe('Inventory, Purchasing, Receiving & Allocations (Prompt 07)', () =
     ).toBeVisible()
 
     // 2. Verify Stock Ledger Table & Balances
-    await expect(page.getByText('ACM-4MM-SLV')).toBeVisible()
-    await expect(page.getByText('ACM-4MM-WHT')).toBeVisible()
+    await expect(page.getByText('ACM-BS-48120')).toBeVisible()
+    await expect(page.getByText('ACM-BW-48120')).toBeVisible()
     await expect(page.getByText('ALU-EXT-4001')).toBeVisible()
 
     // 3. Test Adjust / Scrap Stock Action
@@ -57,14 +62,20 @@ test.describe('Inventory, Purchasing, Receiving & Allocations (Prompt 07)', () =
     await expect(
       page.getByRole('heading', { name: 'Purchasing & Receiving Dock' }),
     ).toBeVisible()
-    await expect(page.getByText('PO-94102').first()).toBeVisible()
+    await expect(page.getByText(poNumber).first()).toBeVisible()
 
     // Execute PO Line Receiving (Good + Damaged)
-    const receiveBtn = page.getByRole('button', { name: 'Receive' }).first()
+    const receiveBtn = page
+      .getByRole('row')
+      .filter({ hasText: poNumber })
+      .first()
+      .getByRole('button', { name: 'Receive', exact: true })
     if ((await receiveBtn.isVisible()) && (await receiveBtn.isEnabled())) {
       await receiveBtn.click()
       await expect(
-        page.getByRole('heading', { name: /Receive Material — PO-94102/i }),
+        page.getByRole('heading', {
+          name: `Receive Material — ${poNumber} Line #1`,
+        }),
       ).toBeVisible()
 
       await page.fill('input[aria-label="Good Quantity"]', '10')
@@ -91,7 +102,9 @@ test.describe('Inventory, Purchasing, Receiving & Allocations (Prompt 07)', () =
     ).toBeVisible()
 
     // Allocate material to release demand
-    const allocateBtn = page.getByRole('button', { name: 'Allocate' }).first()
+    const allocateBtn = page
+      .getByRole('button', { name: 'Allocate', exact: true })
+      .first()
     await allocateBtn.click()
     await expect(
       page.getByRole('heading', { name: /Allocate Material/i }),

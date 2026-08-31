@@ -26,6 +26,7 @@ export async function POST(request: Request) {
         email: session.user.email,
         roles: session.user.roles || [],
         isAdmin: session.user.isAdmin,
+        organizationId: session.user.organizationId,
       },
       {
         code,

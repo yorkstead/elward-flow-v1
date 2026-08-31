@@ -8,7 +8,6 @@ import {
   materialAllocations,
   cycleCountSessions,
   cycleCountLines,
-  releases,
   releaseRevisions,
   panelMarks,
   auditEvents,

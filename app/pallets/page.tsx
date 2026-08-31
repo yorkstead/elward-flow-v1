@@ -9,9 +9,8 @@ import {
   productionJobs,
   panelMarks,
 } from '@/db/schema'
-import { eq, desc } from 'drizzle-orm'
+import { eq, desc, and } from 'drizzle-orm'
 import { PalletDashboardView } from '@/components/domain/pallets/pallet-dashboard-view'
-import { ensureSystemFoundationPopulated } from '@/lib/services/system-init'
 
 export const metadata = {
   title: 'Pallet Construction & Staging | Ellwood Flow',
@@ -27,8 +26,6 @@ export default async function PalletsPage() {
     'use server'
     await signOut({ redirectTo: '/sign-in' })
   }
-
-  await ensureSystemFoundationPopulated(session.user.organizationId)
 
   const userContext = {
     userId: session.user.id,
@@ -46,7 +43,11 @@ export default async function PalletsPage() {
   }
 
   // Preload active releases
-  let availableReleases: { id: string; releaseKey: string; jobNumber: string }[] = []
+  let availableReleases: {
+    id: string
+    releaseKey: string
+    jobNumber: string
+  }[] = []
   try {
     const releaseRows = await db
       .select({
@@ -102,7 +103,12 @@ export default async function PalletsPage() {
         releaseRevisions,
         eq(panelMarks.releaseRevisionId, releaseRevisions.id),
       )
-      .where(eq(releaseRevisions.isCurrent, true))
+      .where(
+        and(
+          eq(releaseRevisions.isCurrent, true),
+          eq(panelMarks.organizationId, session.user.organizationId),
+        ),
+      )
       .limit(50)
 
     mappedMarks = markRows.map((m) => ({

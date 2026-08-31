@@ -1,8 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { startRegistration, browserSupportsWebAuthn } from '@simplewebauthn/browser'
-import { Fingerprint, Plus, Trash2, ShieldCheck, Loader2, Key } from 'lucide-react'
+import { useState, useEffect, useSyncExternalStore } from 'react'
+import {
+  startRegistration,
+  browserSupportsWebAuthn,
+} from '@simplewebauthn/browser'
+import { Fingerprint, Plus, Trash2, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,6 +19,8 @@ interface PasskeyItem {
   createdAt: string
 }
 
+const subscribeToSupport = () => () => {}
+
 export function PasskeyManager() {
   const [passkeys, setPasskeys] = useState<PasskeyItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -23,22 +28,26 @@ export function PasskeyManager() {
   const [keyName, setKeyName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
-  const [supported, setSupported] = useState(false)
+  const supported = useSyncExternalStore(
+    subscribeToSupport,
+    browserSupportsWebAuthn,
+    () => false,
+  )
 
   useEffect(() => {
-    setSupported(browserSupportsWebAuthn())
-    loadPasskeys()
+    void loadPasskeys()
   }, [])
 
   async function loadPasskeys() {
     try {
       const res = await fetch('/api/auth/passkey/list')
+      if (!res.ok) throw new Error('Could not load passkeys.')
       if (res.ok) {
         const data = await res.json()
         setPasskeys(data.passkeys || [])
       }
     } catch {
-      // Ignore initial load error
+      setError('Could not load passkeys. Please reload and try again.')
     } finally {
       setLoading(false)
     }
@@ -52,11 +61,13 @@ export function PasskeyManager() {
 
     try {
       // 1. Request registration options
-      const optRes = await fetch('/api/auth/passkey/generate-options?mode=register')
+      const optRes = await fetch(
+        '/api/auth/passkey/generate-options?mode=register',
+      )
       if (!optRes.ok) {
         throw new Error('Failed to start passkey registration ceremony.')
       }
-      const { options, rpID, origin, challenge } = await optRes.json()
+      const { options } = await optRes.json()
 
       // 2. Browser biometric / security key prompt
       const regResp = await startRegistration({ optionsJSON: options })
@@ -67,9 +78,6 @@ export function PasskeyManager() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           response: regResp,
-          challenge,
-          origin,
-          rpID,
           friendlyName: keyName.trim() || 'My Passkey',
         }),
       })
@@ -79,12 +87,17 @@ export function PasskeyManager() {
         throw new Error(verifyData.error || 'Registration verification failed.')
       }
 
-      setSuccess('Passkey registered successfully! You can now use it to sign in.')
+      setSuccess(
+        'Passkey registered successfully! You can now use it to sign in.',
+      )
       setKeyName('')
       await loadPasskeys()
-    } catch (err: any) {
-      if (err.name !== 'NotAllowedError') {
-        setError(err.message || 'Passkey registration failed.')
+    } catch (err) {
+      if (!(err instanceof Error) || err.name !== 'NotAllowedError') {
+        setError(
+          (err instanceof Error ? err.message : undefined) ||
+            'Passkey registration failed.',
+        )
       }
     } finally {
       setRegistering(false)
@@ -94,12 +107,15 @@ export function PasskeyManager() {
   async function handleDeletePasskey(id: string) {
     if (!confirm('Are you sure you want to remove this passkey?')) return
     try {
-      const res = await fetch(`/api/auth/passkey/list?id=${id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/auth/passkey/list?id=${id}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Could not load passkeys.')
       if (res.ok) {
         setPasskeys((prev) => prev.filter((k) => k.id !== id))
         setSuccess('Passkey removed.')
       }
-    } catch (err: any) {
+    } catch {
       setError('Failed to delete passkey.')
     }
   }
@@ -107,7 +123,8 @@ export function PasskeyManager() {
   if (!supported) {
     return (
       <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-        Passkeys and WebAuthn hardware authenticators are not supported in this browser.
+        Passkeys and WebAuthn hardware authenticators are not supported in this
+        browser.
       </div>
     )
   }
@@ -120,7 +137,8 @@ export function PasskeyManager() {
             Passkeys & Security Keys
           </h3>
           <p className="text-sm text-slate-500">
-            Sign in instantly using Touch ID, Face ID, Windows Hello, or a hardware security key.
+            Sign in instantly using Touch ID, Face ID, Windows Hello, or a
+            hardware security key.
           </p>
         </div>
       </div>
@@ -138,9 +156,15 @@ export function PasskeyManager() {
       )}
 
       {/* Register New Form */}
-      <form onSubmit={handleRegisterPasskey} className="flex flex-col sm:flex-row gap-3 items-end">
-        <div className="flex-1 space-y-1.5 w-full">
-          <Label htmlFor="keyName" className="text-xs font-semibold uppercase text-slate-600">
+      <form
+        onSubmit={handleRegisterPasskey}
+        className="flex flex-col items-end gap-3 sm:flex-row"
+      >
+        <div className="w-full flex-1 space-y-1.5">
+          <Label
+            htmlFor="keyName"
+            className="text-xs font-semibold text-slate-600 uppercase"
+          >
             Passkey / Device Name
           </Label>
           <Input
@@ -155,7 +179,7 @@ export function PasskeyManager() {
         <Button
           type="submit"
           disabled={registering}
-          className="font-heading font-semibold uppercase tracking-wider shrink-0"
+          className="font-heading shrink-0 font-semibold tracking-wider uppercase"
         >
           {registering ? (
             <>
@@ -172,24 +196,28 @@ export function PasskeyManager() {
       </form>
 
       {/* List Existing Keys */}
-      <div className="border rounded-md divide-y divide-slate-200 bg-white shadow-xs">
+      <div className="divide-y divide-slate-200 rounded-md border bg-white shadow-xs">
         {loading ? (
-          <div className="p-6 text-center text-sm text-slate-500 flex items-center justify-center gap-2">
+          <div className="flex items-center justify-center gap-2 p-6 text-center text-sm text-slate-500">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading passkeys...
           </div>
         ) : passkeys.length === 0 ? (
           <div className="p-6 text-center text-sm text-slate-500">
-            No passkeys registered yet. Add one above for instant, passwordless sign-in.
+            No passkeys registered yet. Add one above for instant, passwordless
+            sign-in.
           </div>
         ) : (
           passkeys.map((k) => (
-            <div key={k.id} className="flex items-center justify-between p-4 hover:bg-slate-50/50">
+            <div
+              key={k.id}
+              className="flex items-center justify-between p-4 hover:bg-slate-50/50"
+            >
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-full bg-brand-blue/10 text-brand-blue flex items-center justify-center">
+                <div className="bg-brand-blue/10 text-brand-blue flex h-9 w-9 items-center justify-center rounded-full">
                   <Fingerprint className="h-5 w-5" />
                 </div>
                 <div>
-                  <div className="font-semibold text-slate-900 text-sm">
+                  <div className="text-sm font-semibold text-slate-900">
                     {k.friendlyName || 'Security Key'}
                   </div>
                   <div className="text-xs text-slate-500">
@@ -203,8 +231,9 @@ export function PasskeyManager() {
               <Button
                 variant="ghost"
                 size="sm"
+                aria-label={`Remove ${k.friendlyName || 'security key'}`}
                 onClick={() => handleDeletePasskey(k.id)}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="text-red-600 hover:bg-red-50 hover:text-red-700"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

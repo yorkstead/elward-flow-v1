@@ -71,6 +71,13 @@
       "when": 1788157496945,
       "tag": "0009_cute_ben_parker",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788204799794,
+      "tag": "0010_exotic_exodus",
+      "breakpoints": true
     }
   ]
 }

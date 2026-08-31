@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import {
+  getPasskeyRelyingParty,
+  storePasskeyChallenge,
+} from '@/lib/auth/passkey-challenge'
+import {
   getPasskeyAuthenticationOptions,
   getPasskeyRegistrationOptions,
-  resolveRpIdAndOrigin,
 } from '@/lib/services/passkey'
 
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams
     const mode = searchParams.get('mode') || 'authenticate'
-    const hostHeader = req.headers.get('host')
-    const originHeader = req.headers.get('origin') || req.headers.get('referer')
-    const { rpID, origin } = resolveRpIdAndOrigin(hostHeader, originHeader)
+    const { rpID } = getPasskeyRelyingParty()
 
     if (mode === 'register') {
       const session = await auth()
@@ -29,15 +30,32 @@ export async function GET(req: NextRequest) {
         rpID,
       )
 
-      return NextResponse.json({ options, rpID, origin, challenge: options.challenge })
+      await storePasskeyChallenge(
+        'register',
+        options.challenge,
+        session.user.id,
+      )
+      return NextResponse.json(
+        { options },
+        { headers: { 'Cache-Control': 'no-store' } },
+      )
     }
 
     // Default: authenticate
     const options = await getPasskeyAuthenticationOptions(rpID)
-    return NextResponse.json({ options, rpID, origin, challenge: options.challenge })
-  } catch (error: any) {
+    await storePasskeyChallenge('authenticate', options.challenge)
     return NextResponse.json(
-      { error: error?.message || 'Failed to generate passkey options' },
+      { options },
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to generate passkey options',
+      },
       { status: 500 },
     )
   }

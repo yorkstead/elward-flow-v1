@@ -2,10 +2,14 @@ import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import { eq } from 'drizzle-orm'
 import { db } from '@/db'
-import { users, userRoles, roles, organizations } from '@/db/schema'
+import { users, userRoles, roles } from '@/db/schema'
 import { verifyPassword } from '@/lib/auth/password'
 import { credentialsSchema } from '@/lib/auth/validation'
 import { getEnvironment } from '@/lib/env'
+import {
+  consumePasskeyChallenge,
+  getPasskeyRelyingParty,
+} from '@/lib/auth/passkey-challenge'
 import { verifyPasskeyAuthentication } from '@/lib/services/passkey'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -19,26 +23,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       name: 'Passkey',
       credentials: {
         response: { type: 'text' },
-        challenge: { type: 'text' },
-        origin: { type: 'text' },
-        rpID: { type: 'text' },
       },
       async authorize(credentials) {
-        if (
-          !credentials?.response ||
-          !credentials?.challenge ||
-          !credentials?.origin ||
-          !credentials?.rpID
-        ) {
-          return null
-        }
+        if (typeof credentials?.response !== 'string') return null
         try {
           const response = JSON.parse(credentials.response as string)
+          const challenge = await consumePasskeyChallenge('authenticate')
+          const { origin, rpID } = getPasskeyRelyingParty()
           const user = await verifyPasskeyAuthentication(
             response,
-            credentials.challenge as string,
-            credentials.origin as string,
-            credentials.rpID as string,
+            challenge,
+            origin,
+            rpID,
           )
           return user
         } catch (err) {
@@ -58,16 +54,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = parsed.data.email.toLowerCase().trim()
         const password = parsed.data.password
 
-        // 1. Direct Owner / Administrator Credentials Check
-        const isOwnerEmail =
-          email === 'owner@ellwoodflow.com' ||
-          email === 'owner@ellwoodsystems.com' ||
-          email === 'admin@example.test'
-        const isOwnerPassword =
-          password === 'EllwoodOwner2026!' ||
-          password === 'admin' ||
-          (process.env.E2E_ADMIN_PASSWORD && password === process.env.E2E_ADMIN_PASSWORD)
-
         // Try Database query first
         try {
           const [user] = await db
@@ -77,7 +63,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             .limit(1)
 
           if (user && !user.disabledAt) {
-            const passwordValid = await verifyPassword(password, user.passwordHash)
+            const passwordValid = await verifyPassword(
+              password,
+              user.passwordHash,
+            )
             if (passwordValid) {
               const userRoleRows = await db
                 .select({ roleName: roles.name })
@@ -86,7 +75,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 .where(eq(userRoles.userId, user.id))
 
               const userRoleNames = userRoleRows.map((r) => r.roleName)
-              if (user.isAdmin && !userRoleNames.includes('System Administrator')) {
+              if (
+                user.isAdmin &&
+                !userRoleNames.includes('System Administrator')
+              ) {
                 userRoleNames.push('System Administrator', 'Executive')
               }
 
@@ -105,46 +97,40 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           console.warn('Database query during auth:', dbErr)
         }
 
-        // 2. Owner Fallback Authentication
-        if (isOwnerEmail && isOwnerPassword) {
-          let orgId = '00000000-0000-0000-0000-000000000001'
-          try {
-            const [firstOrg] = await db.select().from(organizations).limit(1)
-            if (firstOrg) orgId = firstOrg.id
-          } catch {
-            // DB is offline/unavailable; retain fallback orgId
-          }
-
-          return {
-            id: '00000000-0000-0000-0000-000000000001',
-            name: 'Ellwood Owner',
-            email,
-            organizationId: orgId,
-            siteId: null,
-            isAdmin: true,
-            roles: [
-              'System Administrator',
-              'Executive',
-              'Operations Manager',
-              'Production Manager',
-            ],
-          }
-        }
-
         return null
       },
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
-      if (user) {
-        token.userId = user.id
-        token.organizationId = user.organizationId
-        token.siteId = user.siteId
-        token.isAdmin = user.isAdmin
-        token.roles = user.roles ?? []
+    async jwt({ token, user }) {
+      const userId = user?.id ?? token.userId ?? token.sub
+      if (typeof userId !== 'string') return null
+      try {
+        const [current] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, userId))
+          .limit(1)
+        if (!current || current.disabledAt) return null
+        const assignedRoles = await db
+          .select({ roleName: roles.name })
+          .from(userRoles)
+          .innerJoin(roles, eq(userRoles.roleId, roles.id))
+          .where(eq(userRoles.userId, current.id))
+        token.userId = current.id
+        token.organizationId = current.organizationId
+        token.siteId = current.siteId
+        token.isAdmin = current.isAdmin
+        token.roles = assignedRoles.map((role) => role.roleName)
+        if (current.isAdmin && !token.roles.includes('System Administrator'))
+          token.roles.push('System Administrator')
+        token.name = current.name
+        token.email = current.email
+        return token
+      } catch {
+        // Never preserve stale authority when the account cannot be verified.
+        return null
       }
-      return token
     },
     session({ session, token }) {
       if (session.user) {

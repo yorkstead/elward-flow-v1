@@ -47,19 +47,19 @@ export function DepartmentCapacityBoard({
           <Card
             key={m.department}
             onClick={() => onSelectDepartment(m.department)}
-            className={`cursor-pointer transition-all hover:border-primary/60 hover:shadow-xs ${
+            className={`hover:border-primary/60 cursor-pointer transition-all hover:shadow-xs ${
               isSelected
-                ? 'border-2 border-primary bg-primary/10 shadow-xs dark:bg-primary/15'
+                ? 'border-primary bg-primary/10 dark:bg-primary/15 border-2 shadow-xs'
                 : 'border-border bg-card'
             }`}
           >
             <CardHeader className="p-3.5 pb-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted">
+                  <div className="bg-muted flex h-8 w-8 items-center justify-center rounded-lg">
                     {getDeptIcon(m.department)}
                   </div>
-                  <CardTitle className="text-xs font-bold text-foreground">
+                  <CardTitle className="text-foreground text-xs font-bold">
                     {m.department}
                   </CardTitle>
                 </div>
@@ -72,9 +72,9 @@ export function DepartmentCapacityBoard({
             </CardHeader>
             <CardContent className="p-3.5 pt-0">
               <div className="mt-1 flex items-baseline justify-between">
-                <span className="text-xl font-black text-foreground">
+                <span className="text-foreground text-xl font-black">
                   {m.totalPlanned}
-                  <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  <span className="text-muted-foreground ml-1 text-xs font-normal">
                     pcs
                   </span>
                 </span>
@@ -84,7 +84,7 @@ export function DepartmentCapacityBoard({
               </div>
 
               {m.scrap > 0 && (
-                <div className="border-border mt-1.5 flex items-center justify-between border-t pt-1 text-[11px] font-medium text-destructive">
+                <div className="border-border text-destructive mt-1.5 flex items-center justify-between border-t pt-1 text-[11px] font-medium">
                   <span>Scrap logged:</span>
                   <span className="font-bold">{m.scrap} pcs</span>
                 </div>

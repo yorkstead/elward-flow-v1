@@ -235,7 +235,8 @@ export class AdminService {
     }
 
     if (input.name !== undefined) updates.name = input.name.trim()
-    if (input.email !== undefined) updates.email = input.email.trim().toLowerCase()
+    if (input.email !== undefined)
+      updates.email = input.email.trim().toLowerCase()
     if (input.isAdmin !== undefined) updates.isAdmin = Boolean(input.isAdmin)
     if (input.password && input.password.trim().length > 0) {
       updates.passwordHash = await hashPassword(input.password)
@@ -294,7 +295,9 @@ export class AdminService {
       name: updatedUser.name,
       email: updatedUser.email,
       isAdmin: updatedUser.isAdmin,
-      disabledAt: updatedUser.disabledAt ? updatedUser.disabledAt.toISOString() : null,
+      disabledAt: updatedUser.disabledAt
+        ? updatedUser.disabledAt.toISOString()
+        : null,
       createdAt: updatedUser.createdAt.toISOString(),
       roles: assignedRoles,
     }

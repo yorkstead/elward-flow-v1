@@ -100,8 +100,7 @@ export function ThemeProvider({
   // Use stored theme if available, otherwise local state
   const theme = storedTheme ?? themeState
 
-  const resolvedTheme: ResolvedTheme =
-    theme === 'system' ? systemTheme : theme
+  const resolvedTheme: ResolvedTheme = theme === 'system' ? systemTheme : theme
 
   // Synchronize DOM with current resolved theme
   React.useEffect(() => {

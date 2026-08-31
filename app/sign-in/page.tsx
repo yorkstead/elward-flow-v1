@@ -21,7 +21,7 @@ export default async function SignInPage({
       <div className="absolute top-4 right-4 z-20 sm:top-6 sm:right-6">
         <ThemeToggle
           variant="outline"
-          className="border-sidebar-border bg-sidebar/80 text-white backdrop-blur-xs hover:bg-sidebar-accent hover:text-white"
+          className="border-sidebar-border bg-sidebar/80 hover:bg-sidebar-accent text-white backdrop-blur-xs hover:text-white"
         />
       </div>
       <section className="border-sidebar-border bg-card grid w-full max-w-5xl overflow-hidden rounded-lg border shadow-2xl lg:grid-cols-[0.9fr_1.1fr]">

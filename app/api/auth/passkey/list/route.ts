@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { eq, and } from 'drizzle-orm'
 import { auth } from '@/auth'
+import { requirePasskeyOrigin } from '@/lib/auth/passkey-challenge'
 import { db } from '@/db'
 import { passkeys, auditEvents } from '@/db/schema'
 
@@ -31,28 +32,37 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  try {
+    requirePasskeyOrigin(req)
+  } catch {
+    return NextResponse.json(
+      { error: 'Invalid request origin' },
+      { status: 403 },
+    )
+  }
   const { searchParams } = new URL(req.url)
   const keyId = searchParams.get('id')
   if (!keyId) {
     return NextResponse.json({ error: 'Missing key ID' }, { status: 400 })
   }
 
-  const [deleted] = await db
-    .delete(passkeys)
-    .where(and(eq(passkeys.id, keyId), eq(passkeys.userId, session.user.id)))
-    .returning()
+  await db.transaction(async (tx) => {
+    const [deleted] = await tx
+      .delete(passkeys)
+      .where(and(eq(passkeys.id, keyId), eq(passkeys.userId, session.user.id)))
+      .returning()
 
-  if (deleted && session.user.organizationId) {
-    await db.insert(auditEvents).values({
-      organizationId: session.user.organizationId,
-      actorId: session.user.id,
-      actingRole: session.user.isAdmin ? 'System Administrator' : 'Operator',
-      action: 'PASSKEY_REMOVED',
-      resourceType: 'passkey',
-      resourceId: deleted.id,
-      reason: `Passkey removed: ${deleted.friendlyName || 'Security Key'}`,
-    })
-  }
-
+    if (deleted && session.user.organizationId) {
+      await tx.insert(auditEvents).values({
+        organizationId: session.user.organizationId,
+        actorId: session.user.id,
+        actingRole: session.user.isAdmin ? 'System Administrator' : 'Operator',
+        action: 'PASSKEY_REMOVED',
+        resourceType: 'passkey',
+        resourceId: deleted.id,
+        reason: `Passkey removed: ${deleted.friendlyName || 'Security Key'}`,
+      })
+    }
+  })
   return NextResponse.json({ success: true })
 }

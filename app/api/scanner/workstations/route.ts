@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { db } from '@/db'
-import { workstations } from '@/db/schema'
-import { eq } from 'drizzle-orm'
+import { workstations, sites } from '@/db/schema'
+import { eq, and } from 'drizzle-orm'
 
 export async function GET() {
   try {
@@ -20,7 +20,13 @@ export async function GET() {
         isActive: workstations.isActive,
       })
       .from(workstations)
-      .where(eq(workstations.isActive, true))
+      .innerJoin(sites, eq(workstations.siteId, sites.id))
+      .where(
+        and(
+          eq(workstations.isActive, true),
+          eq(sites.organizationId, session.user.organizationId),
+        ),
+      )
 
     return NextResponse.json({
       success: true,

@@ -100,7 +100,7 @@ test.describe('Quality Control, Holds, Rework & RMK/RME Remakes (Prompt 08)', ()
     ).toBeVisible()
 
     // Verify seeded RME remake starting at sequence 51
-    await expect(page.getByText(/P-102-RME-51/i).first()).toBeVisible()
+    await expect(page.getByText(/P-103-RMK-51/i).first()).toBeVisible()
 
     // Generate a new RMK / RME Remake
     await page

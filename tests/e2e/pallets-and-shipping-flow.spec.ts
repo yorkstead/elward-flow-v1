@@ -33,6 +33,7 @@ test.describe('Pallets and Shipping Operational Chain', () => {
     await expect(page.getByText('Total Pallets')).toBeVisible()
     await expect(page.getByText('Staged for Ship')).toBeVisible()
 
+    await page.getByRole('button', { name: 'Shipped', exact: true }).click()
     // Verify seeded pallet is visible
     await expect(page.getByText('PAL-25036-R1-001').first()).toBeVisible()
     await expect(
@@ -53,7 +54,7 @@ test.describe('Pallets and Shipping Operational Chain', () => {
     // Verify seeded shipment is visible
     await expect(page.getByText('SHP-25036-001').first()).toBeVisible()
     await expect(
-      page.getByText('Elward Dedicated Flatbed').first(),
+      page.getByText('Ellwood Dedicated Logistics (53ft Flatbed)').first(),
     ).toBeVisible()
     await expect(page.getByRole('button', { name: /BOL CSV/i })).toBeVisible()
   })

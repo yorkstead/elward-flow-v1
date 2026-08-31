@@ -1,13 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useSyncExternalStore } from 'react'
+import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
-import { startAuthentication, browserSupportsWebAuthn } from '@simplewebauthn/browser'
-import { Fingerprint, KeyRound, Loader2, AlertCircle } from 'lucide-react'
+import {
+  startAuthentication,
+  browserSupportsWebAuthn,
+} from '@simplewebauthn/browser'
+import { Fingerprint, Loader2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+
+const subscribeToSupport = () => () => {}
 
 export function SignInForm({
   invalidCredentials,
@@ -15,28 +20,29 @@ export function SignInForm({
   invalidCredentials: boolean
 }) {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false)
   const [isPasswordLoading, setIsPasswordLoading] = useState(false)
-  const [passkeySupported, setPasskeySupported] = useState(false)
+  const passkeySupported = useSyncExternalStore(
+    subscribeToSupport,
+    browserSupportsWebAuthn,
+    () => false,
+  )
   const [passkeyError, setPasskeyError] = useState<string | null>(null)
-
-  useEffect(() => {
-    setPasskeySupported(browserSupportsWebAuthn())
-  }, [])
 
   async function handlePasskeySignIn() {
     setPasskeyError(null)
     setIsPasskeyLoading(true)
     try {
       // 1. Fetch authentication options from server
-      const optRes = await fetch('/api/auth/passkey/generate-options?mode=authenticate')
+      const optRes = await fetch(
+        '/api/auth/passkey/generate-options?mode=authenticate',
+      )
       if (!optRes.ok) {
         throw new Error('Could not initialize passkey challenge.')
       }
-      const { options, rpID, origin, challenge } = await optRes.json()
+      const { options } = await optRes.json()
 
       // 2. Perform WebAuthn authentication ceremony with platform authenticator
       const authResp = await startAuthentication({ optionsJSON: options })
@@ -44,27 +50,28 @@ export function SignInForm({
       // 3. Complete authentication via NextAuth passkey provider
       const signInResult = await signIn('passkey', {
         response: JSON.stringify(authResp),
-        challenge,
-        origin,
-        rpID,
         redirect: false,
         callbackUrl: '/dashboard',
       })
 
       if (signInResult?.error) {
-        setPasskeyError('Passkey authentication failed. Please use your email and password.')
+        setPasskeyError(
+          'Passkey authentication failed. Please use your email and password.',
+        )
       } else if (signInResult?.url) {
         router.push(signInResult.url)
       } else {
         router.push('/dashboard')
       }
-    } catch (err: any) {
-      if (err.name === 'NotAllowedError') {
+    } catch (err) {
+      if (err instanceof Error && err.name === 'NotAllowedError') {
         // User cancelled the biometric prompt
         setPasskeyError(null)
       } else {
         setPasskeyError(
-          err.message || 'Passkey verification failed. Please try again or use your password.',
+          err instanceof Error
+            ? err.message
+            : 'Passkey verification failed. Please try again or use your password.',
         )
       }
     } finally {
@@ -91,7 +98,7 @@ export function SignInForm({
       } else {
         router.push('/dashboard')
       }
-    } catch (err: any) {
+    } catch {
       router.push('/sign-in?error=credentials')
     } finally {
       setIsPasswordLoading(false)
@@ -108,16 +115,16 @@ export function SignInForm({
             variant="outline"
             onClick={handlePasskeySignIn}
             disabled={isPasskeyLoading || isPasswordLoading}
-            className="border-brand-blue/30 hover:border-brand-blue hover:bg-brand-blue/5 text-brand-navy min-h-12 w-full font-semibold shadow-xs transition-colors flex items-center justify-center gap-2"
+            className="border-brand-blue/30 hover:border-brand-blue hover:bg-brand-blue/5 text-brand-navy flex min-h-12 w-full items-center justify-center gap-2 font-semibold shadow-xs transition-colors"
           >
             {isPasskeyLoading ? (
               <>
-                <Loader2 className="h-5 w-5 animate-spin text-brand-blue" />
+                <Loader2 className="text-brand-blue h-5 w-5 animate-spin" />
                 <span>Verifying Biometric / Security Key...</span>
               </>
             ) : (
               <>
-                <Fingerprint className="h-5 w-5 text-brand-blue" />
+                <Fingerprint className="text-brand-blue h-5 w-5" />
                 <span>Sign in with Passkey / Biometrics</span>
               </>
             )}
@@ -128,7 +135,7 @@ export function SignInForm({
               role="alert"
               className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-900"
             >
-              <AlertCircle className="h-4 w-4 shrink-0 text-amber-700 mt-0.5" />
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
               <span>{passkeyError}</span>
             </div>
           )}

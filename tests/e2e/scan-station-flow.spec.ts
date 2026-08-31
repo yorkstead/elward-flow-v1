@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
+import { createScanFixture } from './support/scan-fixture'
 import { requireE2EAdminPassword } from './support/environment'
 
 test.describe('Shop Floor Scan Station & Movement Ledger (Prompt 05)', () => {
@@ -7,11 +8,16 @@ test.describe('Shop Floor Scan Station & Movement Ledger (Prompt 05)', () => {
   const password = requireE2EAdminPassword()
   const email = process.env.ADMIN_EMAIL || 'admin@example.test'
 
+  let fixture: Awaited<ReturnType<typeof createScanFixture>>
+  test.beforeAll(async () => {
+    fixture = await createScanFixture()
+  })
+
   test.beforeEach(async ({ page }) => {
     await page.goto('/sign-in')
     await page.getByLabel('Email').fill(email)
     await page.getByLabel('Password').fill(password)
-    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
     await expect(page).toHaveURL(/\/dashboard/)
   })
 
@@ -30,11 +36,13 @@ test.describe('Shop Floor Scan Station & Movement Ledger (Prompt 05)', () => {
 
     // 2. Scan Current Mark P-103, which is actively in ELU production.
     const codeInput = page.getByPlaceholder(/Scan barcode, enter mark/i)
-    await codeInput.fill('P-103')
+    await codeInput.fill(fixture.elu)
     await page.getByRole('button', { name: /Resolve Code/i }).click()
 
     // 3. Verify Scanned Record Card & Permitted Actions
-    await expect(page.getByText('Mark P-103', { exact: true })).toBeVisible()
+    await expect(
+      page.getByText(`Mark ${fixture.elu}`, { exact: true }),
+    ).toBeVisible()
     await expect(page.getByText(/Current Rev/i)).toBeVisible()
     await expect(
       page.getByRole('button', { name: /Complete ELU Cut/i }),
@@ -53,17 +61,19 @@ test.describe('Shop Floor Scan Station & Movement Ledger (Prompt 05)', () => {
 
     // 5. Verify High-Visibility Success Feedback & Movement Ledger Row
     await expect(
-      page.getByText(/SUCCESS: Recorded 1 pcs of P-103/i),
+      page.getByText(`SUCCESS: Recorded 1 pcs of ${fixture.elu}`),
     ).toBeVisible()
     await expect(page.getByText('Shop Floor Movement Ledger')).toBeVisible()
     await expect(
-      page.getByRole('cell', { name: 'P-103' }).first(),
+      page.getByRole('cell', { name: fixture.elu }).first(),
     ).toBeVisible()
 
     // 6. Test Mandatory Reason for Exception (Hold) on Mark P-102
-    await codeInput.fill('P-102')
+    await codeInput.fill(fixture.qc)
     await page.getByRole('button', { name: /Resolve Code/i }).click()
-    await expect(page.getByText('Mark P-102', { exact: true })).toBeVisible()
+    await expect(
+      page.getByText(`Mark ${fixture.qc}`, { exact: true }),
+    ).toBeVisible()
 
     // Click Place QC Hold
     await page.getByRole('button', { name: /Place QC Hold/i }).click()
@@ -79,11 +89,11 @@ test.describe('Shop Floor Scan Station & Movement Ledger (Prompt 05)', () => {
       .click()
 
     await expect(
-      page.getByText(/SUCCESS: Recorded 1 pcs of P-102/i),
+      page.getByText(`SUCCESS: Recorded 1 pcs of ${fixture.qc}`),
     ).toBeVisible()
 
     // 7. Test Blocking Obsolete Revision Warning Modal
-    await codeInput.fill('P-OLD')
+    await codeInput.fill(fixture.obsolete)
     await page.getByRole('button', { name: /Resolve Code/i }).click()
 
     await expect(

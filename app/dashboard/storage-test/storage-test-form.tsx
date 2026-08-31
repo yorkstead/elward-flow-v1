@@ -22,14 +22,24 @@ export function StorageTestForm() {
         setPending(true)
         setError('')
         setResult(undefined)
-        const response = await fetch('/api/files', {
-          method: 'POST',
-          body: new FormData(event.currentTarget),
-        })
-        const body = await response.json()
-        setPending(false)
-        if (!response.ok) setError(body.error ?? 'Upload failed')
-        else setResult(body)
+        try {
+          const response = await fetch('/api/files', {
+            method: 'POST',
+            body: new FormData(event.currentTarget),
+          })
+          if (
+            !response.headers.get('content-type')?.includes('application/json')
+          ) {
+            throw new Error('Storage is unavailable. Please try again.')
+          }
+          const body = await response.json()
+          if (!response.ok) throw new Error(body.error ?? 'Upload failed')
+          setResult(body)
+        } catch (failure) {
+          setError(failure instanceof Error ? failure.message : 'Upload failed')
+        } finally {
+          setPending(false)
+        }
       }}
     >
       <div className="space-y-2">
