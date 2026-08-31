@@ -8,6 +8,7 @@ describe('Environment variable normalization', () => {
       LOG_LEVEL: '',
       AUTH_SECRET: '',
       DATABASE_URL: '   ',
+      ADMIN_EMAIL: '[SENSITIVE]',
     }
 
     const normalized = normalizeEnvironment(raw)
@@ -15,6 +16,7 @@ describe('Environment variable normalization', () => {
     expect(normalized.LOG_LEVEL).toBeUndefined()
     expect(normalized.AUTH_SECRET).toBeUndefined()
     expect(normalized.DATABASE_URL).toBeUndefined()
+    expect(normalized.ADMIN_EMAIL).toBeUndefined()
   })
 
   it('prepends https:// when APP_URL is provided without protocol', () => {

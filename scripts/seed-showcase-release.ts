@@ -33,14 +33,30 @@ import {
   purchaseOrders,
   purchaseOrderLines,
   auditEvents,
+  roles,
+  userRoles,
 } from '@/db/schema'
 import { getFileStore } from '@/lib/files/minio-file-store'
 import { generateDemoReleaseFiles } from './generate-demo-release-files'
+import { hashPassword } from '@/lib/auth/password'
+import { DEMO_PERSONAS, DEMO_PASSWORD } from '@/lib/auth/demo-accounts'
+import { STANDARD_ROLES } from '@/lib/services/domain'
 
 export async function seedShowcaseRelease(shouldClosePool = false) {
-  if (process.env.NODE_ENV === 'production')
+  if (
+    process.env.NODE_ENV === 'production' &&
+    process.env.ALLOW_DEMO_SEED !== 'true'
+  ) {
     throw new Error('Synthetic seed is not permitted in production')
-  await getFileStore().ensureReady()
+  }
+  try {
+    await getFileStore().ensureReady()
+  } catch (err: unknown) {
+    console.warn(
+      'File store storage check skipped/unavailable, continuing with DB seeding:',
+      err instanceof Error ? err.message : String(err),
+    )
+  }
   console.log('=== SEEDING COMPLETE MULTI-RELEASE ENVIRONMENT (7 RELEASES) ===')
 
   // 1. Generate local fixture files
@@ -53,15 +69,15 @@ export async function seedShowcaseRelease(shouldClosePool = false) {
     ;[organization] = await db
       .insert(organizations)
       .values({
-        name: 'Ellwood Systems — Local Development',
-        slug: 'ellwood-systems-local',
+        name: 'Ellwood Systems — Fabrication',
+        slug: 'ellwood-systems-main',
       })
       .returning()
   } else {
     await db
       .update(organizations)
       .set({
-        name: 'Ellwood Systems — Local Development',
+        name: 'Ellwood Systems — Fabrication',
         updatedAt: new Date(),
       })
       .where(eq(organizations.id, organization.id))
@@ -86,21 +102,93 @@ export async function seedShowcaseRelease(shouldClosePool = false) {
       .returning()
   }
 
-  let [adminUser] = await db.select().from(users).limit(1)
-  if (!adminUser) {
-    ;[adminUser] = await db
-      .insert(users)
+  // Ensure standard roles exist
+  console.log('Ensuring roles exist...')
+  const roleMap: Record<string, string> = {}
+  for (const rName of STANDARD_ROLES) {
+    const rCode = rName.toUpperCase().replace(/[\s\/\-]+/g, '_')
+    const [r] = await db
+      .insert(roles)
       .values({
         organizationId: organization.id,
-        siteId: site.id,
-        name: 'Ellwood Systems Administrator',
-        email: 'admin@example.test',
-        passwordHash:
-          '$2a$10$w0992P5zT.KzV59/QeFz7.XF9tYk12g17n6r97yF9g.5W7.67O4e.',
-        isAdmin: true,
+        name: rName,
+        code: rCode,
+        description: `Standard role: ${rName}`,
+        isSystem: true,
+      })
+      .onConflictDoUpdate({
+        target: roles.code,
+        set: { name: rName, updatedAt: new Date() },
       })
       .returning()
+    roleMap[rName] = r.id
   }
+
+  // Seed Demo Personas with known password
+  console.log('Seeding demo persona accounts...')
+  const demoPasswordHash = await hashPassword(DEMO_PASSWORD)
+
+  const personaRoleAssignments: Record<string, string[]> = {
+    'admin@ellwood.test': [
+      'System Administrator',
+      'Operations Manager',
+      'Executive',
+    ],
+    'cnc.lead@ellwood.test': ['Shop Floor Supervisor', 'Operator'],
+    'qc.lead@ellwood.test': ['Quality Inspector'],
+    'shipping.lead@ellwood.test': ['Logistics Coordinator'],
+  }
+
+  for (const persona of DEMO_PERSONAS) {
+    const existing = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, persona.email))
+      .limit(1)
+
+    let userRecord = existing[0]
+    if (!userRecord) {
+      ;[userRecord] = await db
+        .insert(users)
+        .values({
+          organizationId: organization.id,
+          siteId: site.id,
+          name: persona.name,
+          email: persona.email,
+          passwordHash: demoPasswordHash,
+          isAdmin: persona.id === 'admin',
+        })
+        .returning()
+    } else {
+      ;[userRecord] = await db
+        .update(users)
+        .set({
+          name: persona.name,
+          passwordHash: demoPasswordHash,
+          isAdmin: persona.id === 'admin',
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userRecord.id))
+        .returning()
+    }
+
+    const assignedRoles = personaRoleAssignments[persona.email] || []
+    for (const rName of assignedRoles) {
+      const rId = roleMap[rName]
+      if (rId) {
+        await db
+          .insert(userRoles)
+          .values({ userId: userRecord.id, roleId: rId })
+          .onConflictDoNothing()
+      }
+    }
+  }
+
+  let [adminUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, 'admin@ellwood.test'))
+    .limit(1)
 
   // 3. Clear existing release records for clean setup
   console.log('1. Clearing old release & production data...')
@@ -512,13 +600,17 @@ export async function seedShowcaseRelease(shouldClosePool = false) {
           .digest('hex')
         const objectKey = `originals/${organization.id}/synthetic/releases/${jobPrefix}/rev-${revLabel}/${sha256}/${dc.file}`
 
-        await fileStore.putImmutable({
-          key: objectKey,
-          body: fileBytes,
-          contentType: dc.file.endsWith('.csv')
-            ? 'text/csv'
-            : 'application/pdf',
-        })
+        try {
+          await fileStore.putImmutable({
+            key: objectKey,
+            body: fileBytes,
+            contentType: dc.file.endsWith('.csv')
+              ? 'text/csv'
+              : 'application/pdf',
+          })
+        } catch {
+          // Continue if S3 bucket is not reachable during initial DB setup
+        }
 
         const [stored] = await db
           .insert(storedFiles)

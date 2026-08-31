@@ -11,6 +11,7 @@ import { Fingerprint, Loader2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { DemoPersonaSelector } from '@/components/auth/demo-persona-selector'
 
 const subscribeToSupport = () => () => {}
 
@@ -106,7 +107,23 @@ export function SignInForm({
   }
 
   return (
-    <div className="mt-8 space-y-6">
+    <div className="mt-6 space-y-6">
+      {/* 1-Click Demo Personas */}
+      <DemoPersonaSelector
+        onSelectPersona={(pEmail, pPassword) => {
+          setEmail(pEmail)
+          setPassword(pPassword)
+        }}
+      />
+
+      <div className="relative my-4 flex items-center justify-center">
+        <div className="border-border w-full border-t" />
+        <span className="bg-card text-muted-foreground px-3 text-[11px] font-semibold tracking-wider uppercase">
+          Or sign in manually
+        </span>
+        <div className="border-border w-full border-t" />
+      </div>
+
       {/* Primary Passkey Action */}
       {passkeySupported && (
         <div className="space-y-2">
@@ -115,7 +132,7 @@ export function SignInForm({
             variant="outline"
             onClick={handlePasskeySignIn}
             disabled={isPasskeyLoading || isPasswordLoading}
-            className="border-brand-blue/30 hover:border-brand-blue hover:bg-brand-blue/5 text-brand-navy flex min-h-12 w-full items-center justify-center gap-2 font-semibold shadow-xs transition-colors"
+            className="border-brand-blue/30 hover:border-brand-blue hover:bg-brand-blue/5 text-foreground flex min-h-12 w-full items-center justify-center gap-2 font-semibold shadow-xs transition-colors"
           >
             {isPasskeyLoading ? (
               <>
@@ -133,20 +150,12 @@ export function SignInForm({
           {passkeyError && (
             <div
               role="alert"
-              className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-900"
+              className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-xs font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
             >
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
               <span>{passkeyError}</span>
             </div>
           )}
-
-          <div className="relative my-4 flex items-center justify-center">
-            <div className="border-border w-full border-t" />
-            <span className="bg-card px-3 text-[11px] font-semibold tracking-wider text-slate-500 uppercase">
-              Or continue with password
-            </span>
-            <div className="border-border w-full border-t" />
-          </div>
         </div>
       )}
 
@@ -162,8 +171,8 @@ export function SignInForm({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="border-input min-h-12 bg-white"
-            placeholder="name@elward.com"
+            className="border-input bg-card min-h-12"
+            placeholder="name@ellwood.test"
           />
         </div>
         <div className="space-y-2">
@@ -177,14 +186,14 @@ export function SignInForm({
             onChange={(e) => setPassword(e.target.value)}
             minLength={8}
             required
-            className="border-input min-h-12 bg-white"
+            className="border-input bg-card min-h-12"
           />
         </div>
 
         {invalidCredentials && !passkeyError ? (
           <p
             role="alert"
-            className="rounded-md border border-red-300 bg-red-50 p-3 text-sm font-semibold text-red-800"
+            className="rounded-md border border-red-300 bg-red-50 p-3 text-sm font-semibold text-red-800 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300"
           >
             Email or password is incorrect.
           </p>

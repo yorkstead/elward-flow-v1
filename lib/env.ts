@@ -1,14 +1,17 @@
 import { z } from 'zod'
 
+const isBuildPhase =
+  process.env.NEXT_PHASE === 'phase-production-build' ||
+  process.env.npm_lifecycle_event === 'build'
+
 const serverEnvironmentSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
     .default('development'),
   APP_URL: z.url().default('http://localhost:3000'),
-  AUTH_SECRET: z
-    .string()
-    .min(32)
-    .default('synthetic_build_secret_32_characters_minimum'),
+  AUTH_SECRET: isBuildPhase
+    ? z.string().min(32).default('synthetic_build_secret_32_characters_minimum')
+    : z.string().min(32),
   DATABASE_URL: z
     .string()
     .min(1)
@@ -36,7 +39,7 @@ export function normalizeEnvironment(
   for (const [key, value] of Object.entries(rawEnv)) {
     if (value !== undefined) {
       const trimmed = value.trim()
-      if (trimmed !== '') {
+      if (trimmed !== '' && !trimmed.includes('[SENSITIVE]')) {
         normalized[key] = trimmed
       }
     }
