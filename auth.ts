@@ -6,6 +6,7 @@ import { users, userRoles, roles, organizations } from '@/db/schema'
 import { verifyPassword } from '@/lib/auth/password'
 import { credentialsSchema } from '@/lib/auth/validation'
 import { getEnvironment } from '@/lib/env'
+import { verifyPasskeyAuthentication } from '@/lib/services/passkey'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: getEnvironment().AUTH_SECRET,
@@ -14,6 +15,41 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   pages: { signIn: '/sign-in' },
   providers: [
     Credentials({
+      id: 'passkey',
+      name: 'Passkey',
+      credentials: {
+        response: { type: 'text' },
+        challenge: { type: 'text' },
+        origin: { type: 'text' },
+        rpID: { type: 'text' },
+      },
+      async authorize(credentials) {
+        if (
+          !credentials?.response ||
+          !credentials?.challenge ||
+          !credentials?.origin ||
+          !credentials?.rpID
+        ) {
+          return null
+        }
+        try {
+          const response = JSON.parse(credentials.response as string)
+          const user = await verifyPasskeyAuthentication(
+            response,
+            credentials.challenge as string,
+            credentials.origin as string,
+            credentials.rpID as string,
+          )
+          return user
+        } catch (err) {
+          console.warn('Passkey authorization failed:', err)
+          return null
+        }
+      },
+    }),
+    Credentials({
+      id: 'credentials',
+      name: 'Credentials',
       credentials: { email: { type: 'email' }, password: { type: 'password' } },
       async authorize(input) {
         const parsed = credentialsSchema.safeParse(input)
