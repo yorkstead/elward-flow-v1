@@ -11,6 +11,8 @@ import {
   Loader2,
   Sparkles,
   ArrowRight,
+  Database,
+  RefreshCw,
 } from 'lucide-react'
 import {
   DEMO_PERSONAS,
@@ -18,7 +20,6 @@ import {
   type DemoPersona,
 } from '@/lib/auth/demo-accounts'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 
 const ICON_MAP = {
   Shield,
@@ -36,10 +37,32 @@ export function DemoPersonaSelector({
   const [activePersonaId, setActivePersonaId] = React.useState<string | null>(
     null,
   )
+  const [isSeeding, setIsSeeding] = React.useState(false)
+  const [seedSuccess, setSeedSuccess] = React.useState<string | null>(null)
   const [error, setError] = React.useState<string | null>(null)
+
+  const handleSeedDatabase = async () => {
+    setError(null)
+    setSeedSuccess(null)
+    setIsSeeding(true)
+    try {
+      const res = await fetch('/api/demo/seed', { method: 'POST' })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setSeedSuccess('Demo database seeded with 7 releases, panel marks & users!')
+      } else {
+        setError(data.error || 'Failed to seed demo database.')
+      }
+    } catch {
+      setError('Network error while requesting demo database seeding.')
+    } finally {
+      setIsSeeding(false)
+    }
+  }
 
   const handleQuickSignIn = async (persona: DemoPersona) => {
     setError(null)
+    setSeedSuccess(null)
     setActivePersonaId(persona.id)
     onSelectPersona?.(persona.email, DEMO_PASSWORD)
 
@@ -53,7 +76,7 @@ export function DemoPersonaSelector({
 
       if (result?.error) {
         setError(
-          'Could not sign in with demo credentials. Please verify the demo database has been seeded.',
+          'Could not sign in with demo credentials. Please click "Seed Demo Database" below to populate the database.',
         )
         setActivePersonaId(null)
       } else if (result?.url) {
@@ -69,11 +92,26 @@ export function DemoPersonaSelector({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <Sparkles className="text-brand-orange h-4 w-4" />
-        <span className="font-heading text-foreground text-xs font-bold tracking-wider uppercase">
-          1-Click Demo Evaluation Personas
-        </span>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Sparkles className="text-brand-orange h-4 w-4" />
+          <span className="font-heading text-foreground text-xs font-bold tracking-wider uppercase">
+            1-Click Demo Personas
+          </span>
+        </div>
+        <button
+          type="button"
+          disabled={isSeeding || Boolean(activePersonaId)}
+          onClick={handleSeedDatabase}
+          className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-[11px] font-medium transition-colors disabled:opacity-50"
+        >
+          {isSeeding ? (
+            <RefreshCw className="h-3 w-3 animate-spin text-brand-blue" />
+          ) : (
+            <Database className="h-3 w-3 text-brand-blue" />
+          )}
+          <span>{isSeeding ? 'Seeding...' : 'Seed / Reset DB'}</span>
+        </button>
       </div>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -85,7 +123,7 @@ export function DemoPersonaSelector({
             <button
               key={persona.id}
               type="button"
-              disabled={Boolean(activePersonaId)}
+              disabled={Boolean(activePersonaId) || isSeeding}
               onClick={() => handleQuickSignIn(persona)}
               className="group border-border bg-card/60 hover:border-brand-blue hover:bg-brand-blue/5 relative flex flex-col items-start justify-between rounded-lg border p-3 text-left transition-all hover:shadow-xs disabled:opacity-50"
             >
@@ -117,10 +155,37 @@ export function DemoPersonaSelector({
         })}
       </div>
 
+      {seedSuccess && (
+        <div className="flex items-center gap-2 rounded-md border border-emerald-300 bg-emerald-50 p-2.5 text-xs font-semibold text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <span>{seedSuccess}</span>
+        </div>
+      )}
+
       {error && (
-        <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
-          {error}
-        </p>
+        <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-2.5 text-xs font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+          <p>{error}</p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={isSeeding}
+            onClick={handleSeedDatabase}
+            className="border-amber-400 bg-white dark:bg-card h-7 text-xs font-bold text-amber-900 dark:text-amber-200"
+          >
+            {isSeeding ? (
+              <>
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                Seeding Demo Database...
+              </>
+            ) : (
+              <>
+                <Database className="mr-1 h-3 w-3" />
+                Seed Demo Database Now
+              </>
+            )}
+          </Button>
+        </div>
       )}
     </div>
   )

@@ -130,9 +130,20 @@ export async function generateDemoReleaseFiles() {
   console.log(
     '--- Generating Controlled Release Documents & Demo Package for Job 25036 ---',
   )
-  const fixturesDir = path.resolve(process.cwd(), 'fixtures')
-  if (!fs.existsSync(fixturesDir)) {
-    fs.mkdirSync(fixturesDir, { recursive: true })
+  let fixturesDir = path.resolve(process.cwd(), 'fixtures')
+  try {
+    if (!fs.existsSync(fixturesDir)) {
+      fs.mkdirSync(fixturesDir, { recursive: true })
+    }
+  } catch {
+    fixturesDir = path.resolve('/tmp', 'fixtures')
+    try {
+      if (!fs.existsSync(fixturesDir)) {
+        fs.mkdirSync(fixturesDir, { recursive: true })
+      }
+    } catch {
+      // Continue in memory
+    }
   }
 
   const zip = new JSZip()
