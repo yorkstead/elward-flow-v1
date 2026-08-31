@@ -5,7 +5,10 @@ const serverEnvironmentSchema = z.object({
     .enum(['development', 'test', 'production'])
     .default('development'),
   APP_URL: z.url().default('http://localhost:3000'),
-  AUTH_SECRET: z.string().min(32),
+  AUTH_SECRET: z
+    .string()
+    .min(32)
+    .default('synthetic_build_secret_32_characters_minimum'),
   DATABASE_URL: z
     .string()
     .min(1)
