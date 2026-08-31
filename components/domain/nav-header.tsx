@@ -8,6 +8,7 @@ import { Search, LogOut, ShieldCheck, Clock, MapPin, Menu } from 'lucide-react'
 import { OfflineStatus } from '@/components/offline-status'
 import { GlobalSearchDialog } from './global-search-dialog'
 import { ElwardFlowBrand } from '@/components/brand/elward-flow-brand'
+import { ThemeToggle } from '@/components/theme/theme-toggle'
 
 interface NavHeaderProps {
   user: {
@@ -107,6 +108,7 @@ export function NavHeader({
         {/* Right action status & user profile */}
         <div className="flex shrink-0 items-center gap-1 sm:gap-2.5">
           <OfflineStatus />
+          <ThemeToggle className="text-slate-200 hover:bg-sidebar-accent hover:text-white" />
 
           <div className="hidden flex-col items-end text-right sm:flex">
             <div className="flex items-center gap-1.5">
