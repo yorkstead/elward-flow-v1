@@ -592,66 +592,74 @@ export async function seedShowcaseRelease(shouldClosePool = false) {
   ) {
     for (const dc of docClassList) {
       const filePath = path.join(fixturesDir, dc.file)
+      let fileBytes: Buffer
       if (fs.existsSync(filePath)) {
-        const fileBytes = fs.readFileSync(filePath)
-        const sha256 = crypto
-          .createHash('sha256')
-          .update(fileBytes)
-          .digest('hex')
-        const objectKey = `originals/${organization.id}/synthetic/releases/${jobPrefix}/rev-${revLabel}/${sha256}/${dc.file}`
-
         try {
-          await fileStore.putImmutable({
-            key: objectKey,
-            body: fileBytes,
-            contentType: dc.file.endsWith('.csv')
-              ? 'text/csv'
-              : 'application/pdf',
-          })
+          fileBytes = fs.readFileSync(filePath)
         } catch {
-          // Continue if S3 bucket is not reachable during initial DB setup
+          fileBytes = Buffer.from(`Sample controlled document for ${dc.name}`)
         }
-
-        const [stored] = await db
-          .insert(storedFiles)
-          .values({
-            organizationId: organization.id,
-            objectKey,
-            originalName: dc.file,
-            contentType: dc.file.endsWith('.csv')
-              ? 'text/csv'
-              : 'application/pdf',
-            byteSize: fileBytes.length,
-            sha256,
-            uploadedById: adminUser.id,
-          })
-          .onConflictDoUpdate({
-            target: [storedFiles.objectKey],
-            set: { originalName: dc.file, updatedAt: new Date() },
-          })
-          .returning()
-
-        const [doc] = await db
-          .insert(documents)
-          .values({
-            organizationId: organization.id,
-            jobId,
-            releaseId,
-            classificationId: docClassMap[dc.code],
-            name: dc.name,
-            version: 1,
-          })
-          .returning()
-
-        await db.insert(documentRevisions).values({
-          documentId: doc.id,
-          releaseRevisionId: releaseRevId,
-          storedFileId: stored.id,
-          revisionLabel: revLabel,
-          status: 'current',
-          notes: `Controlled release file for ${dc.name}`,
-        })
+      } else {
+        fileBytes = Buffer.from(`Sample controlled document for ${dc.name}`)
       }
+
+      const sha256 = crypto
+        .createHash('sha256')
+        .update(fileBytes)
+        .digest('hex')
+      const objectKey = `originals/${organization.id}/synthetic/releases/${jobPrefix}/rev-${revLabel}/${sha256}/${dc.file}`
+
+      try {
+        await fileStore.putImmutable({
+          key: objectKey,
+          body: fileBytes,
+          contentType: dc.file.endsWith('.csv')
+            ? 'text/csv'
+            : 'application/pdf',
+        })
+      } catch {
+        // Continue if S3 bucket is not reachable during initial DB setup
+      }
+
+      const [stored] = await db
+        .insert(storedFiles)
+        .values({
+          organizationId: organization.id,
+          objectKey,
+          originalName: dc.file,
+          contentType: dc.file.endsWith('.csv')
+            ? 'text/csv'
+            : 'application/pdf',
+          byteSize: fileBytes.length,
+          sha256,
+          uploadedById: adminUser.id,
+        })
+        .onConflictDoUpdate({
+          target: [storedFiles.objectKey],
+          set: { originalName: dc.file, updatedAt: new Date() },
+        })
+        .returning()
+
+      const [doc] = await db
+        .insert(documents)
+        .values({
+          organizationId: organization.id,
+          jobId,
+          releaseId,
+          classificationId: docClassMap[dc.code],
+          name: dc.name,
+          version: 1,
+        })
+        .returning()
+
+      await db.insert(documentRevisions).values({
+        documentId: doc.id,
+        releaseRevisionId: releaseRevId,
+        storedFileId: stored.id,
+        revisionLabel: revLabel,
+        status: 'current',
+        notes: `Controlled release file for ${dc.name}`,
+      })
     }
   }
 

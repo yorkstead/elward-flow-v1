@@ -14,6 +14,14 @@ function sanitizeText(str: string): string {
     .replace(/[^\x20-\x7E]/g, ' ')
 }
 
+function safeWriteFile(filePath: string, content: string | Uint8Array | Buffer) {
+  try {
+    fs.writeFileSync(filePath, content)
+  } catch {
+    // Read-only filesystem in serverless deployment; in-memory zip & buffers retained safely
+  }
+}
+
 async function createSamplePdf(
   title: string,
   subtitle: string,
@@ -166,7 +174,7 @@ export async function generateDemoReleaseFiles() {
   ].join('\n')
 
   zip.file('25036_TAKEOFF_R1.csv', takeoffCsvContent)
-  fs.writeFileSync(
+  safeWriteFile(
     path.join(fixturesDir, '25036_TAKEOFF_R1.csv'),
     takeoffCsvContent,
   )
@@ -200,7 +208,7 @@ export async function generateDemoReleaseFiles() {
     ],
   )
   zip.file('25036-R1 Table Layout Bed 1.pdf', tableLayoutPdf)
-  fs.writeFileSync(
+  safeWriteFile(
     path.join(fixturesDir, '25036-R1 Table Layout Bed 1.pdf'),
     tableLayoutPdf,
   )
@@ -234,7 +242,7 @@ export async function generateDemoReleaseFiles() {
     ],
   )
   zip.file('25036-R1 Cut Drawings CNC.pdf', cutDrawingsPdf)
-  fs.writeFileSync(
+  safeWriteFile(
     path.join(fixturesDir, '25036-R1 Cut Drawings CNC.pdf'),
     cutDrawingsPdf,
   )
@@ -267,7 +275,7 @@ export async function generateDemoReleaseFiles() {
     ],
   )
   zip.file('25036-R1 Extrusion Cut List.pdf', extrusionCutListPdf)
-  fs.writeFileSync(
+  safeWriteFile(
     path.join(fixturesDir, '25036-R1 Extrusion Cut List.pdf'),
     extrusionCutListPdf,
   )
@@ -298,7 +306,7 @@ export async function generateDemoReleaseFiles() {
     ],
   )
   zip.file('25036-R1 Assembly Drawings.pdf', assemblyDrawingsPdf)
-  fs.writeFileSync(
+  safeWriteFile(
     path.join(fixturesDir, '25036-R1 Assembly Drawings.pdf'),
     assemblyDrawingsPdf,
   )
@@ -329,7 +337,7 @@ export async function generateDemoReleaseFiles() {
     ],
   )
   zip.file('25036-R1 Shop Drawings.pdf', shopDrawingsPdf)
-  fs.writeFileSync(
+  safeWriteFile(
     path.join(fixturesDir, '25036-R1 Shop Drawings.pdf'),
     shopDrawingsPdf,
   )
@@ -350,7 +358,7 @@ export async function generateDemoReleaseFiles() {
     ],
   )
   zip.file('25036-R1 Elevation Matrix.pdf', elevationMatrixPdf)
-  fs.writeFileSync(
+  safeWriteFile(
     path.join(fixturesDir, '25036-R1 Elevation Matrix.pdf'),
     elevationMatrixPdf,
   )
@@ -373,7 +381,7 @@ export async function generateDemoReleaseFiles() {
     ],
   )
   zip.file('25036-R1 Packing List.pdf', packingListPdf)
-  fs.writeFileSync(
+  safeWriteFile(
     path.join(fixturesDir, '25036-R1 Packing List.pdf'),
     packingListPdf,
   )
@@ -395,7 +403,7 @@ export async function generateDemoReleaseFiles() {
     ],
   )
   zip.file('25036-R1 Priority Accessory List.pdf', priorityListPdf)
-  fs.writeFileSync(
+  safeWriteFile(
     path.join(fixturesDir, '25036-R1 Priority Accessory List.pdf'),
     priorityListPdf,
   )
@@ -403,7 +411,7 @@ export async function generateDemoReleaseFiles() {
   // Write out master zip package for testing upload wizard
   const zipBuffer = await zip.generateAsync({ type: 'nodebuffer' })
   const zipPath = path.join(fixturesDir, '25036_RELEASE_1_PACKAGE.zip')
-  fs.writeFileSync(zipPath, zipBuffer)
+  safeWriteFile(zipPath, zipBuffer)
 
   console.log(
     `✓ Master Release ZIP Package generated: ${zipPath} (${zipBuffer.length} bytes)`,
