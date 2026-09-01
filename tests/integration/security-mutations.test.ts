@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq, and } from 'drizzle-orm'
 import { db } from '@/db'
 import {
@@ -41,7 +41,20 @@ vi.mock('next/headers', () => ({
   }),
 }))
 
+import { pool } from '@/db'
+
+async function isDatabaseReachable(): Promise<boolean> {
+  try {
+    const client = await pool.connect()
+    client.release()
+    return true
+  } catch {
+    return false
+  }
+}
+
 describe('Server-side security and concurrent mutation regressions', () => {
+  let isDbReady = false
   let orgId: string,
     otherOrgId: string,
     userId: string,
@@ -55,7 +68,12 @@ describe('Server-side security and concurrent mutation regressions', () => {
     isAdmin: true,
     organizationId: orgId,
   })
+  beforeEach((ctx) => {
+    if (!isDbReady) ctx.skip()
+  })
   beforeAll(async () => {
+    isDbReady = await isDatabaseReachable()
+    if (!isDbReady) return
     if (
       !['localhost', '127.0.0.1'].includes(
         new URL(process.env.DATABASE_URL!).hostname,
