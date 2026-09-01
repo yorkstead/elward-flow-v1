@@ -4,7 +4,7 @@ import { seedShowcaseRelease } from '@/scripts/seed-showcase-release'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60 // Allow up to 60s for full multi-release seeding
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
     process.env.ALLOW_DEMO_SEED = 'true'
     console.log('Initiating demo showcase seeding via API endpoint...')

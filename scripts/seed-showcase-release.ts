@@ -184,7 +184,7 @@ export async function seedShowcaseRelease(shouldClosePool = false) {
     }
   }
 
-  let [adminUser] = await db
+  const [adminUser] = await db
     .select()
     .from(users)
     .where(eq(users.email, 'admin@ellwood.test'))
