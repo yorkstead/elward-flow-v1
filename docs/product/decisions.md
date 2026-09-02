@@ -124,3 +124,9 @@ belong in an ADR under `docs/adr/`.
 - Shipment loading validates tenant ownership, staged status, duplicate membership and capacity within a transaction. Repeated loads and dispatches do not double-count or repeat audit events. A unique pallet membership index prevents duplicate loading across shipments. Audit failures roll back the transaction.
 - Removed page-triggered showcase seeding and runtime schema changes, including the hard-coded job deletion. Development fixtures are created explicitly in isolated local resources; missing operational data is never filled by reading a page.
 - Repository checks and local browser acceptance do not establish deployed production behavior. Existing deployments need a separately verified release, migration preflight for duplicate pallet assignments, and rotation if they ever used a published/default signing secret.
+
+## 2026-09-01 — Demo authentication boundary
+
+- Production never renders one-click fictional personas and never permits the demo seed/reset route, even if `ALLOW_DEMO_SEED` is accidentally configured.
+- Local or isolated demo environments must explicitly set `ALLOW_DEMO_SEED=true`; the flag is insufficient when `NODE_ENV=production`.
+- Production administrator access remains separately provisioned and cannot fall back to synthetic identities or public reset behavior.

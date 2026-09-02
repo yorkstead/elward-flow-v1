@@ -17,8 +17,10 @@ const subscribeToSupport = () => () => {}
 
 export function SignInForm({
   invalidCredentials,
+  demoEnabled,
 }: {
   invalidCredentials: boolean
+  demoEnabled: boolean
 }) {
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -108,21 +110,24 @@ export function SignInForm({
 
   return (
     <div className="mt-6 space-y-6">
-      {/* 1-Click Demo Personas */}
-      <DemoPersonaSelector
-        onSelectPersona={(pEmail, pPassword) => {
-          setEmail(pEmail)
-          setPassword(pPassword)
-        }}
-      />
+      {demoEnabled ? (
+        <>
+          <DemoPersonaSelector
+            onSelectPersona={(pEmail, pPassword) => {
+              setEmail(pEmail)
+              setPassword(pPassword)
+            }}
+          />
 
-      <div className="relative my-4 flex items-center justify-center">
-        <div className="border-border w-full border-t" />
-        <span className="bg-card text-muted-foreground px-3 text-[11px] font-semibold tracking-wider uppercase">
-          Or sign in manually
-        </span>
-        <div className="border-border w-full border-t" />
-      </div>
+          <div className="relative my-4 flex items-center justify-center">
+            <div className="border-border w-full border-t" />
+            <span className="bg-card text-muted-foreground px-3 text-[11px] font-semibold tracking-wider uppercase">
+              Or sign in manually
+            </span>
+            <div className="border-border w-full border-t" />
+          </div>
+        </>
+      ) : null}
 
       {/* Primary Passkey Action */}
       {passkeySupported && (

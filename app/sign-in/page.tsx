@@ -4,6 +4,7 @@ import { auth } from '@/auth'
 import { SignInForm } from './sign-in-form'
 import { ElwardFlowBrand } from '@/components/brand/elward-flow-brand'
 import { ThemeToggle } from '@/components/theme/theme-toggle'
+import { isDemoAccessEnabled } from '@/lib/auth/demo-access'
 
 export const metadata: Metadata = { title: 'Sign in' }
 
@@ -60,7 +61,10 @@ export default async function SignInPage({
             Accounts are provisioned by an administrator. Public registration is
             disabled.
           </p>
-          <SignInForm invalidCredentials={error === 'credentials'} />
+          <SignInForm
+            invalidCredentials={error === 'credentials'}
+            demoEnabled={isDemoAccessEnabled()}
+          />
         </div>
       </section>
     </main>
