@@ -603,10 +603,7 @@ export async function seedShowcaseRelease(shouldClosePool = false) {
         fileBytes = Buffer.from(`Sample controlled document for ${dc.name}`)
       }
 
-      const sha256 = crypto
-        .createHash('sha256')
-        .update(fileBytes)
-        .digest('hex')
+      const sha256 = crypto.createHash('sha256').update(fileBytes).digest('hex')
       const objectKey = `originals/${organization.id}/synthetic/releases/${jobPrefix}/rev-${revLabel}/${sha256}/${dc.file}`
 
       try {

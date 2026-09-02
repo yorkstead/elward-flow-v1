@@ -26,7 +26,10 @@ if (fs.existsSync(envPath)) {
 process.env.ALLOW_DEMO_SEED = 'true'
 
 async function run() {
-  console.log('Running demo seed with database:', process.env.DATABASE_URL?.split('@')[1] || 'configured DB')
+  console.log(
+    'Running demo seed with database:',
+    process.env.DATABASE_URL?.split('@')[1] || 'configured DB',
+  )
   try {
     // Dynamic import ensures DB pool connects with the loaded DATABASE_URL
     const { seedShowcaseRelease } = await import('./seed-showcase-release')

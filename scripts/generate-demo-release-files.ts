@@ -14,7 +14,10 @@ function sanitizeText(str: string): string {
     .replace(/[^\x20-\x7E]/g, ' ')
 }
 
-function safeWriteFile(filePath: string, content: string | Uint8Array | Buffer) {
+function safeWriteFile(
+  filePath: string,
+  content: string | Uint8Array | Buffer,
+) {
   try {
     fs.writeFileSync(filePath, content)
   } catch {

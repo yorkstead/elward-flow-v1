@@ -49,7 +49,9 @@ export function DemoPersonaSelector({
       const res = await fetch('/api/demo/seed', { method: 'POST' })
       const data = await res.json()
       if (res.ok && data.success) {
-        setSeedSuccess('Demo database seeded with 7 releases, panel marks & users!')
+        setSeedSuccess(
+          'Demo database seeded with 7 releases, panel marks & users!',
+        )
       } else {
         setError(data.error || 'Failed to seed demo database.')
       }
@@ -106,9 +108,9 @@ export function DemoPersonaSelector({
           className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-[11px] font-medium transition-colors disabled:opacity-50"
         >
           {isSeeding ? (
-            <RefreshCw className="h-3 w-3 animate-spin text-brand-blue" />
+            <RefreshCw className="text-brand-blue h-3 w-3 animate-spin" />
           ) : (
-            <Database className="h-3 w-3 text-brand-blue" />
+            <Database className="text-brand-blue h-3 w-3" />
           )}
           <span>{isSeeding ? 'Seeding...' : 'Seed / Reset DB'}</span>
         </button>
@@ -171,7 +173,7 @@ export function DemoPersonaSelector({
             variant="outline"
             disabled={isSeeding}
             onClick={handleSeedDatabase}
-            className="border-amber-400 bg-white dark:bg-card h-7 text-xs font-bold text-amber-900 dark:text-amber-200"
+            className="dark:bg-card h-7 border-amber-400 bg-white text-xs font-bold text-amber-900 dark:text-amber-200"
           >
             {isSeeding ? (
               <>
