@@ -3,6 +3,7 @@ import { and, eq, gt, like, lt } from 'drizzle-orm'
 import { cookies } from 'next/headers'
 import { db } from '@/db'
 import { verificationTokens } from '@/db/schema'
+import type { NextRequest } from 'next/server'
 import { getEnvironment } from '@/lib/env'
 
 type Ceremony = 'authenticate' | 'register'
