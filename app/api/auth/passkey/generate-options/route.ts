@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams
     const mode = searchParams.get('mode') || 'authenticate'
-    const { rpID } = getPasskeyRelyingParty()
+    const { rpID } = getPasskeyRelyingParty(req)
 
     if (mode === 'register') {
       const session = await auth()

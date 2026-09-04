@@ -8,7 +8,65 @@ import { getEnvironment } from '@/lib/env'
 type Ceremony = 'authenticate' | 'register'
 const lifetimeSeconds = 300
 
-export function getPasskeyRelyingParty() {
+export function getPasskeyRelyingParty(req?: Request | NextRequest | Headers | { get(name: string): string | null }) {
+  if (req) {
+    let candidateHost: string | null = null
+    let candidateOrigin: string | null = null
+
+    // 1. Check if client passed rpID / origin in query params (via Request or NextRequest)
+    if ('url' in req && req.url) {
+      try {
+        const url = new URL(req.url)
+        const qRpId = url.searchParams.get('rpID')
+        const qOrigin = url.searchParams.get('origin')
+        if (qRpId && qOrigin) {
+          const parsed = new URL(qOrigin)
+          if (
+            parsed.hostname === qRpId &&
+            (parsed.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(qRpId))
+          ) {
+            candidateHost = qRpId
+            candidateOrigin = parsed.origin
+          }
+        }
+      } catch {}
+    }
+
+    // 2. Check headers
+    const headers = 'headers' in req && req.headers ? req.headers : (req as { get(name: string): string | null })
+    
+    // Check referer if candidate not set
+    if (!candidateHost) {
+      const referer = headers.get?.('referer')
+      if (referer) {
+        try {
+          const parsed = new URL(referer)
+          if (parsed.protocol === 'https:' || ['localhost', '127.0.0.1'].includes(parsed.hostname)) {
+            candidateHost = parsed.hostname
+            candidateOrigin = parsed.origin
+          }
+        } catch {}
+      }
+    }
+
+    // Check forwarded host or host
+    if (!candidateHost) {
+      const hostHeader = headers.get?.('x-forwarded-host') || headers.get?.('host')
+      if (hostHeader) {
+        const hostname = hostHeader.split(':')[0]
+        const proto =
+          headers.get?.('x-forwarded-proto') ||
+          (['localhost', '127.0.0.1'].includes(hostname) ? 'http' : 'https')
+        candidateHost = hostname
+        candidateOrigin = `${proto}://${hostHeader}`
+      }
+    }
+
+    if (candidateHost && candidateOrigin) {
+      return { rpID: candidateHost, origin: candidateOrigin }
+    }
+  }
+
   const url = new URL(getEnvironment().APP_URL)
   if (
     url.protocol !== 'https:' &&
@@ -80,7 +138,12 @@ export async function consumePasskeyChallenge(mode: Ceremony, userId?: string) {
 }
 
 export function requirePasskeyOrigin(request: Request) {
-  if (request.headers.get('origin') !== getPasskeyRelyingParty().origin) {
+  const origin = request.headers.get('origin')
+  if (!origin) {
+    throw new Error('Invalid request origin.')
+  }
+  const rp = getPasskeyRelyingParty(request)
+  if (origin !== rp.origin && origin !== getPasskeyRelyingParty().origin) {
     throw new Error('Invalid request origin.')
   }
 }

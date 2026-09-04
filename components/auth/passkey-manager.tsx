@@ -60,9 +60,10 @@ export function PasskeyManager() {
     setRegistering(true)
 
     try {
-      // 1. Request registration options
+      const clientRpId = window.location.hostname
+      const clientOrigin = window.location.origin
       const optRes = await fetch(
-        '/api/auth/passkey/generate-options?mode=register',
+        `/api/auth/passkey/generate-options?mode=register&rpID=${encodeURIComponent(clientRpId)}&origin=${encodeURIComponent(clientOrigin)}`,
       )
       if (!optRes.ok) {
         throw new Error('Failed to start passkey registration ceremony.')

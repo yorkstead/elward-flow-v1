@@ -24,12 +24,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         response: { type: 'text' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (typeof credentials?.response !== 'string') return null
         try {
           const response = JSON.parse(credentials.response as string)
           const challenge = await consumePasskeyChallenge('authenticate')
-          const { origin, rpID } = getPasskeyRelyingParty()
+          const { origin, rpID } = getPasskeyRelyingParty(req as Request)
           const user = await verifyPasskeyAuthentication(
             response,
             challenge,

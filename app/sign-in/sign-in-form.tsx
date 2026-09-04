@@ -38,9 +38,10 @@ export function SignInForm({
     setPasskeyError(null)
     setIsPasskeyLoading(true)
     try {
-      // 1. Fetch authentication options from server
+      const clientRpId = window.location.hostname
+      const clientOrigin = window.location.origin
       const optRes = await fetch(
-        '/api/auth/passkey/generate-options?mode=authenticate',
+        `/api/auth/passkey/generate-options?mode=authenticate&rpID=${encodeURIComponent(clientRpId)}&origin=${encodeURIComponent(clientOrigin)}`,
       )
       if (!optRes.ok) {
         throw new Error('Could not initialize passkey challenge.')

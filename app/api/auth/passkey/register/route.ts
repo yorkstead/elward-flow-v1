@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     }
 
     const challenge = await consumePasskeyChallenge('register', session.user.id)
-    const { origin, rpID } = getPasskeyRelyingParty()
+    const { origin, rpID } = getPasskeyRelyingParty(req)
     const passkey = await verifyPasskeyRegistration(
       session.user.id,
       response,
