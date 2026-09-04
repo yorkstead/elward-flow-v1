@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:next": "next build",
     "build:cf": "opennextjs-cloudflare build",
     "deploy:cf": "opennextjs-cloudflare build && wrangler deploy",
     "preview": "next dev",
@@ -82,6 +83,10 @@
     "typescript": "^5",
     "vitest": "3.2.4",
     "wrangler": "^4.127.1"
+  },
+  "overrides": {
+    "qs": "^6.16.0",
+    "fast-uri": "^3.1.7"
   },
   "ignoreScripts": [
     "sharp",
