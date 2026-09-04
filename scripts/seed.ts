@@ -24,6 +24,8 @@ async function main() {
     'Seeding Elward Flow database with Prompt 02 domain foundation...',
   )
   const environment = getEnvironment()
+  if (environment.NODE_ENV === 'production')
+    throw new Error('Synthetic seed is not permitted in production')
 
   // 1. Organization & Primary Site
   const [organization] = await db

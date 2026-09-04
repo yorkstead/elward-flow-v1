@@ -11,9 +11,13 @@ import {
   auditEvents,
   activityEvents,
   users,
+  sites,
 } from '@/db/schema'
-import { eq, and, desc } from 'drizzle-orm'
-import { logger } from '@/lib/logger'
+import { eq, and, desc, sql } from 'drizzle-orm'
+import { type UserContext, hasPermission } from '@/lib/auth/roles'
+import { requirePermission } from '@/lib/middleware/authorize'
+import { z } from 'zod'
+import { movementInputSchema } from '@/lib/scanner/movement-validation'
 
 export type BarcodeType =
   | 'panel_mark'
@@ -229,12 +233,7 @@ export class ScannerService {
    * Resolve any scanned barcode, verify revision status, and calculate permitted shop actions.
    */
   static async resolveScan(
-    actor: {
-      userId: string
-      email: string
-      roles: string[]
-      isAdmin?: boolean
-    },
+    actor: UserContext,
     input: {
       code: string
       workstationId?: string
@@ -242,6 +241,8 @@ export class ScannerService {
       activeReleaseNumber?: number
     },
   ): Promise<ResolveScanResult> {
+    requirePermission(actor, 'view', 'resolveScan')
+    if (!actor.organizationId) throw new Error('Organization context required.')
     const parsed = BarcodeEngine.parse(input.code)
 
     // 1. Resolve Panel Mark
@@ -256,7 +257,7 @@ export class ScannerService {
 
     // 3. Resolve Workstation
     if (parsed.type === 'workstation') {
-      return this.resolveWorkstation(parsed)
+      return this.resolveWorkstation(actor, parsed)
     }
 
     // 4. Default Not Found / Unsupported
@@ -271,12 +272,7 @@ export class ScannerService {
   }
 
   private static async resolvePanelMark(
-    actor: {
-      userId: string
-      email: string
-      roles: string[]
-      isAdmin?: boolean
-    },
+    actor: UserContext,
     parsed: ParsedBarcode,
     input: {
       activeJobNumber?: string
@@ -315,7 +311,14 @@ export class ScannerService {
       )
       .innerJoin(releases, eq(releaseRevisions.releaseId, releases.id))
       .innerJoin(productionJobs, eq(releases.jobId, productionJobs.id))
-      .where(eq(panelMarks.mark, markKey))
+      .where(
+        and(
+          eq(panelMarks.organizationId, actor.organizationId!),
+          z.uuid().safeParse(markKey).success
+            ? eq(panelMarks.id, markKey)
+            : eq(panelMarks.mark, markKey),
+        ),
+      )
 
     if (!candidates || candidates.length === 0) {
       return {
@@ -329,22 +332,26 @@ export class ScannerService {
     }
 
     // Narrow candidate if job/release context was provided
-    let candidate = candidates[0]
+    let candidate: (typeof candidates)[number] | undefined
     if (parsed.jobContext && parsed.releaseContext) {
-      const matched = candidates.find(
+      const matching = candidates.filter(
         (c) =>
           c.jobNumber === parsed.jobContext &&
           c.releaseNumber === parseInt(parsed.releaseContext!, 10),
       )
-      if (matched) candidate = matched
+      candidate = matching.length === 1 ? matching[0] : undefined
     } else if (input.activeJobNumber && input.activeReleaseNumber) {
-      const matched = candidates.find(
+      const matching = candidates.filter(
         (c) =>
           c.jobNumber === input.activeJobNumber &&
           c.releaseNumber === input.activeReleaseNumber,
       )
-      if (matched) candidate = matched
-    }
+      candidate = matching.length === 1 ? matching[0] : undefined
+    } else if (candidates.length === 1) candidate = candidates[0]
+    if (!candidate)
+      throw new Error(
+        'Mark is missing or ambiguous. Scan its exact job/release identifier.',
+      )
 
     // =========================================================================
     // BLOCKING CHECK: Is the scanned mark attached to an obsolete revision?
@@ -423,16 +430,19 @@ export class ScannerService {
       .orderBy(operationInstances.sequence)
 
     // Identify active operation stage
-    const activeOp =
-      opInstances.find(
-        (op) => op.status === 'In progress' || op.status === 'Ready',
-      ) ||
-      opInstances.find((op) => op.status === 'Pending') ||
-      opInstances[opInstances.length - 1]
+    const activeOp = opInstances.find(
+      (op) => !['Completed', 'Skipped'].includes(op.status),
+    )
 
     const totalQty = candidate.quantity
     const completedQty = activeOp ? activeOp.completedQuantity : 0
-    const remainingQty = Math.max(0, totalQty - completedQty)
+    const remainingQty = Math.max(
+      0,
+      (activeOp?.plannedQuantity ?? totalQty) -
+        completedQty -
+        (activeOp?.scrapQuantity ?? 0) -
+        (activeOp?.holdQuantity ?? 0),
+    )
 
     // Calculate permitted actions based on actor role and active operation
     const permittedActions = this.calculatePermittedActions(
@@ -480,7 +490,7 @@ export class ScannerService {
   }
 
   private static async resolveRelease(
-    _actor: { roles: string[]; isAdmin?: boolean },
+    actor: UserContext,
     parsed: ParsedBarcode,
   ): Promise<ResolveScanResult> {
     const key = parsed.identifier
@@ -499,6 +509,7 @@ export class ScannerService {
       .innerJoin(productionJobs, eq(releases.jobId, productionJobs.id))
       .where(
         and(
+          eq(releases.organizationId, actor.organizationId!),
           eq(productionJobs.jobNumber, jobNum),
           eq(releases.releaseNumber, relNum),
         ),
@@ -563,12 +574,18 @@ export class ScannerService {
   }
 
   private static async resolveWorkstation(
+    actor: UserContext,
     parsed: ParsedBarcode,
   ): Promise<ResolveScanResult> {
     const [station] = await db
       .select()
       .from(workstations)
-      .where(eq(workstations.code, parsed.identifier))
+      .where(
+        and(
+          eq(workstations.code, parsed.identifier),
+          sql`${workstations.siteId} in (select id from ${sites} where organization_id = ${actor.organizationId})`,
+        ),
+      )
       .limit(1)
 
     if (!station) {
@@ -628,21 +645,17 @@ export class ScannerService {
     remainingQty: number,
   ): PermittedAction[] {
     const actions: PermittedAction[] = []
-    const isManager =
-      actor.isAdmin ||
-      actor.roles.some((r) =>
-        [
-          'System Administrator',
-          'Operations Manager',
-          'Production Manager',
-        ].includes(r),
-      )
-
+    if (
+      !hasPermission(actor, 'edit') ||
+      !activeOp ||
+      ['Completed', 'Hold'].includes(activeOp.status)
+    )
+      return actions
     const opCode = activeOp?.opCode?.toLowerCase() || ''
     const opName = activeOp?.opName || 'Production'
 
     // 1. CNC Actions
-    if (opCode.includes('cnc') || isManager) {
+    if (opCode.includes('cnc')) {
       if (activeOp?.status !== 'In progress') {
         actions.push({
           id: 'start_cnc',
@@ -668,7 +681,7 @@ export class ScannerService {
     }
 
     // 2. ELU Extrusion Cut Actions
-    if (opCode.includes('elu') || isManager) {
+    if (opCode.includes('elu')) {
       if (activeOp?.status !== 'In progress') {
         actions.push({
           id: 'start_elu',
@@ -694,7 +707,7 @@ export class ScannerService {
     }
 
     // 3. Assembly Actions
-    if (opCode.includes('assembly') || isManager) {
+    if (opCode.includes('assembly')) {
       if (activeOp?.status !== 'In progress') {
         actions.push({
           id: 'start_assembly',
@@ -720,7 +733,7 @@ export class ScannerService {
     }
 
     // 4. QC Inspection Actions (Pass, Pass w/ Note, Hold, Rework, Remake, Scrap)
-    if (opCode.includes('qc') || actor.roles.includes('QC') || isManager) {
+    if (opCode.includes('qc') && hasPermission(actor, 'approve')) {
       actions.push({
         id: 'qc_pass',
         label: 'QC Inspection Pass',
@@ -763,19 +776,6 @@ export class ScannerService {
       })
     }
 
-    // 5. Palletizing Actions
-    if (opCode.includes('pallet') || isManager) {
-      actions.push({
-        id: 'assign_pallet',
-        label: 'Assign to Pallet',
-        stage: 'Pallets',
-        targetStatus: 'Completed',
-        description: 'Load inspected panel onto target pallet',
-        recommended: true,
-        color: 'emerald',
-      })
-    }
-
     // 6. Generic Log Scrap (always available with mandatory reason)
     actions.push({
       id: 'log_scrap',
@@ -795,168 +795,246 @@ export class ScannerService {
    * Execute an atomic, idempotent physical movement or stage transition.
    */
   static async executeMovement(
-    actor: {
-      userId: string
-      email: string
-      roles: string[]
-      isAdmin?: boolean
-    },
+    actor: UserContext,
     input: ExecuteMovementInput,
   ) {
-    // 1. Idempotency Check: prevent double scans
-    const [existing] = await db
-      .select()
-      .from(movementEvents)
-      .where(eq(movementEvents.idempotencyKey, input.idempotencyKey))
-      .limit(1)
-
-    if (existing) {
-      logger.info('Idempotent movement already recorded', {
-        idempotencyKey: input.idempotencyKey,
-      })
-      return {
-        success: true,
-        isDuplicate: true,
-        movementId: existing.id,
-        recordedAt: existing.serverTimestamp,
+    requirePermission(actor, 'edit', 'executeMovement')
+    if (!actor.organizationId) throw new Error('Organization context required.')
+    const data = movementInputSchema.parse(input)
+    const orgId = actor.organizationId
+    return db.transaction(async (tx) => {
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtextextended(${orgId + ':' + data.idempotencyKey}, 0))`,
+      )
+      const [existing] = await tx
+        .select()
+        .from(movementEvents)
+        .where(
+          and(
+            eq(movementEvents.organizationId, orgId),
+            eq(movementEvents.idempotencyKey, data.idempotencyKey),
+          ),
+        )
+        .limit(1)
+      if (existing) {
+        const quantity = data.actionId.startsWith('start_') ? 0 : data.quantity
+        if (
+          existing.recordId !== data.recordId ||
+          existing.operationInstanceId !== data.operationInstanceId ||
+          Number(existing.quantity) !== quantity ||
+          existing.actorId !== actor.userId ||
+          existing.condition !== data.condition
+        ) {
+          throw new Error(
+            'Idempotency key was already used for a different movement.',
+          )
+        }
+        return {
+          success: true,
+          isDuplicate: true,
+          movementId: existing.id,
+          recordedAt: existing.serverTimestamp,
+        }
       }
-    }
-
-    // 2. Reason validation for exceptions
-    if (
-      (input.condition === 'scrap' ||
-        input.condition === 'hold' ||
-        input.condition === 'rework' ||
-        input.condition === 'remake') &&
-      !input.reason?.trim()
-    ) {
-      throw new Error(
-        `A non-empty reason is required when recording ${input.condition.toUpperCase()} movements.`,
-      )
-    }
-
-    const [org] = await db
-      .select()
-      .from(users)
-      .innerJoin(
-        workstations,
-        eq(workstations.siteId, input.workstationId || workstations.id),
-      )
-      .limit(1)
-
-    // Execute in PostgreSQL transaction
-    return await db.transaction(async (tx) => {
-      // Look up actor's organization
       const [actorUser] = await tx
         .select()
         .from(users)
-        .where(eq(users.id, actor.userId))
+        .where(and(eq(users.id, actor.userId), eq(users.organizationId, orgId)))
         .limit(1)
-
-      const orgId = actorUser?.organizationId || org?.workstations?.siteId
-
-      if (!orgId) {
-        throw new Error('Organization context could not be resolved.')
-      }
-
-      // Update operation instance if provided
-      if (input.operationInstanceId) {
-        const [op] = await tx
-          .select()
-          .from(operationInstances)
-          .where(eq(operationInstances.id, input.operationInstanceId))
+      if (!actorUser || actorUser.disabledAt)
+        throw new Error('User is not active in this organization.')
+      const [mark] = await tx
+        .select()
+        .from(panelMarks)
+        .where(
+          and(
+            eq(panelMarks.id, data.recordId),
+            eq(panelMarks.organizationId, orgId),
+          ),
+        )
+        .limit(1)
+      if (!mark) throw new Error('Panel mark not found in this organization.')
+      const [revision] = await tx
+        .select()
+        .from(releaseRevisions)
+        .where(
+          and(
+            eq(releaseRevisions.id, mark.releaseRevisionId),
+            eq(releaseRevisions.organizationId, orgId),
+          ),
+        )
+        .for('update')
+      if (!revision?.isCurrent || revision.status !== 'Approved')
+        throw new Error(
+          'Superseded revision: scan the current revision before recording production.',
+        )
+      const [op] = await tx
+        .select()
+        .from(operationInstances)
+        .where(
+          and(
+            eq(operationInstances.id, data.operationInstanceId),
+            eq(operationInstances.organizationId, orgId),
+            eq(operationInstances.panelMarkId, mark.id),
+          ),
+        )
+        .for('update')
+      if (!op) throw new Error('Operation does not belong to this panel mark.')
+      if (data.sourceStatus !== op.status)
+        throw new Error('Operation changed. Rescan before continuing.')
+      const predecessors = await tx
+        .select()
+        .from(operationInstances)
+        .where(
+          and(
+            eq(operationInstances.panelMarkId, mark.id),
+            sql`${operationInstances.sequence} < ${op.sequence}`,
+          ),
+        )
+      if (predecessors.some((p) => p.status !== 'Completed'))
+        throw new Error('Complete preceding operations first.')
+      const [definition] = await tx
+        .select()
+        .from(operationDefinitions)
+        .where(eq(operationDefinitions.id, op.operationDefinitionId))
+        .limit(1)
+      if (!definition) throw new Error('Operation definition not found.')
+      const remaining =
+        op.plannedQuantity -
+        op.completedQuantity -
+        op.scrapQuantity -
+        op.holdQuantity
+      const action = this.calculatePermittedActions(
+        actor,
+        {
+          instanceId: op.id,
+          opName: definition.name,
+          opCode: definition.code,
+          opDept: definition.department,
+          status: op.status,
+          completedQuantity: op.completedQuantity,
+          plannedQuantity: op.plannedQuantity,
+        },
+        remaining,
+      ).find((a) => a.id === data.actionId)
+      if (!action)
+        throw new Error(
+          'This action is not permitted for the current operation.',
+        )
+      if (
+        data.destinationStatus !== action.targetStatus ||
+        data.condition !== (action.conditionRequired ?? 'pass')
+      )
+        throw new Error('Invalid action state or condition.')
+      if (
+        (action.requiresReason || data.condition !== 'pass') &&
+        !data.reason?.trim()
+      )
+        throw new Error('A reason is required for this action.')
+      const starting = data.actionId.startsWith('start_')
+      if (!starting && data.quantity > remaining)
+        throw new Error('Quantity exceeds remaining work.')
+      if (data.workstationId) {
+        const [station] = await tx
+          .select({ id: workstations.id })
+          .from(workstations)
+          .innerJoin(sites, eq(workstations.siteId, sites.id))
+          .where(
+            and(
+              eq(workstations.id, data.workstationId),
+              eq(sites.organizationId, orgId),
+            ),
+          )
           .limit(1)
-
-        if (op) {
-          const isScrap = input.condition === 'scrap'
-          const isHold = input.condition === 'hold'
-          const newCompleted =
-            !isScrap && !isHold
-              ? op.completedQuantity + input.quantity
-              : op.completedQuantity
-          const newScrap = isScrap
-            ? op.scrapQuantity + input.quantity
-            : op.scrapQuantity
-          const newHold = isHold
-            ? op.holdQuantity + input.quantity
-            : op.holdQuantity
-
-          const newStatus = isHold
-            ? 'Hold'
-            : newCompleted >= op.plannedQuantity
-              ? 'Completed'
-              : 'In progress'
-
-          await tx
-            .update(operationInstances)
-            .set({
-              completedQuantity: newCompleted,
-              scrapQuantity: newScrap,
-              holdQuantity: newHold,
-              status: newStatus,
-              updatedAt: new Date(),
-            })
-            .where(eq(operationInstances.id, input.operationInstanceId))
-        }
+        if (!station)
+          throw new Error('Workstation does not belong to this organization.')
       }
-
-      // Record movement event
+      const passed =
+        !starting && ['pass', 'pass_with_note'].includes(data.condition)
+      const completed = op.completedQuantity + (passed ? data.quantity : 0)
+      const scrap =
+        op.scrapQuantity + (data.condition === 'scrap' ? data.quantity : 0)
+      const hold =
+        op.holdQuantity + (data.condition === 'hold' ? data.quantity : 0)
+      const status = ['hold', 'scrap'].includes(data.condition)
+        ? 'Hold'
+        : completed >= op.plannedQuantity
+          ? 'Completed'
+          : 'In progress'
+      const [updated] = await tx
+        .update(operationInstances)
+        .set({
+          completedQuantity: completed,
+          scrapQuantity: scrap,
+          holdQuantity: hold,
+          status,
+          updatedAt: new Date(),
+          version: op.version + 1,
+        })
+        .where(
+          and(
+            eq(operationInstances.id, op.id),
+            eq(operationInstances.status, op.status),
+            eq(operationInstances.completedQuantity, op.completedQuantity),
+          ),
+        )
+        .returning()
+      if (!updated)
+        throw new Error('Operation changed. Rescan before continuing.')
       const [movement] = await tx
         .insert(movementEvents)
         .values({
           organizationId: orgId,
           actorId: actor.userId,
           actingRole: actor.roles[0] || 'Operator',
-          recordType: input.recordType,
-          recordId: input.recordId,
-          recordIdentifier: input.recordIdentifier,
-          sourceStatus: input.sourceStatus,
-          destinationStatus: input.destinationStatus,
-          operationInstanceId: input.operationInstanceId,
-          quantity: String(input.quantity),
-          unit: input.unit || 'EA',
-          condition: input.condition || 'pass',
-          reason: input.reason,
-          notes: input.notes,
-          workstationId: input.workstationId,
-          deviceId: input.deviceId,
-          idempotencyKey: input.idempotencyKey,
-          clientTimestamp: input.clientTimestamp
-            ? new Date(input.clientTimestamp)
+          recordType: data.recordType,
+          recordId: mark.id,
+          recordIdentifier: mark.mark,
+          sourceStatus: op.status,
+          destinationStatus: status,
+          operationInstanceId: op.id,
+          quantity: String(starting ? 0 : data.quantity),
+          unit: data.unit,
+          condition: data.condition,
+          reason: data.reason,
+          notes: data.notes,
+          workstationId: data.workstationId,
+          deviceId: data.deviceId,
+          idempotencyKey: data.idempotencyKey,
+          clientTimestamp: data.clientTimestamp
+            ? new Date(data.clientTimestamp)
             : new Date(),
         })
         .returning()
-
-      // Record immutable audit event
       await tx.insert(auditEvents).values({
         organizationId: orgId,
         actorId: actor.userId,
         actingRole: actor.roles[0] || 'Operator',
-        action: `SCAN_MOVEMENT_${input.actionId.toUpperCase()}`,
-        resourceType: input.recordType,
-        resourceId: input.recordId,
-        priorState: { status: input.sourceStatus },
+        action: `SCAN_MOVEMENT_${data.actionId.toUpperCase()}`,
+        resourceType: 'panel_mark',
+        resourceId: mark.id,
+        priorState: { status: op.status },
         newState: {
-          status: input.destinationStatus,
-          condition: input.condition,
+          status,
+          condition: data.condition,
+          actionId: data.actionId,
+          requestedQuantity: data.quantity,
         },
-        quantity: String(input.quantity),
-        condition: input.condition,
-        reason: input.reason,
-        workstationId: input.workstationId,
-        deviceId: input.deviceId,
+        quantity: String(starting ? 0 : data.quantity),
+        condition: data.condition,
+        reason: data.reason,
+        workstationId: data.workstationId,
+        deviceId: data.deviceId,
+        sourceRevision: revision.revisionLabel,
       })
-
-      // Record activity feed event
       await tx.insert(activityEvents).values({
         organizationId: orgId,
         actorId: actor.userId,
-        entityType: input.recordType,
-        entityId: input.recordId,
-        actionTitle: `${input.actionId.replace(/_/g, ' ').toUpperCase()} Recorded`,
-        summary: `${actor.roles[0] || 'Operator'} moved ${input.recordIdentifier} (${input.quantity} pcs) -> ${input.destinationStatus}${input.reason ? ` [${input.reason}]` : ''}`,
+        entityType: 'panel_mark',
+        entityId: mark.id,
+        actionTitle: 'Movement recorded',
+        summary: `${mark.mark}: ${op.status} -> ${status}`,
       })
-
       return {
         success: true,
         isDuplicate: false,

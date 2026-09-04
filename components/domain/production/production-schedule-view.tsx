@@ -235,16 +235,16 @@ export function ProductionScheduleView({
       {/* ========================================================================= */}
       {/* Master Top Bar */}
       {/* ========================================================================= */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+      <div className="border-border bg-card flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 shadow-xs">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-2xs">
+          <div className="bg-primary text-primary-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-lg shadow-2xs">
             <Calendar className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-base font-black text-slate-950">
+            <h1 className="text-foreground text-base font-black">
               Production Planning & Department Execution
             </h1>
-            <p className="text-xs text-slate-500">
+            <p className="text-muted-foreground text-xs">
               Capacity boards, station dispatch, WinCNC routing, and contingency
               queues
             </p>
@@ -253,16 +253,16 @@ export function ProductionScheduleView({
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Toggle between Master Schedule Table and Department Focused Console */}
-          <div className="flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+          <div className="border-border bg-muted flex items-center rounded-lg border p-0.5">
             <Button
               type="button"
-              variant={activeTabMode === 'schedule' ? 'default' : 'ghost'}
+              variant="ghost"
               size="sm"
               onClick={() => setActiveTabMode('schedule')}
               className={`h-7 px-3 text-xs font-semibold ${
                 activeTabMode === 'schedule'
-                  ? 'bg-slate-900 text-white'
-                  : 'text-slate-600'
+                  ? 'bg-card text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <TableIcon className="mr-1.5 h-3.5 w-3.5" />
@@ -270,13 +270,13 @@ export function ProductionScheduleView({
             </Button>
             <Button
               type="button"
-              variant={activeTabMode === 'console' ? 'default' : 'ghost'}
+              variant="ghost"
               size="sm"
               onClick={() => setActiveTabMode('console')}
               className={`h-7 px-3 text-xs font-semibold ${
                 activeTabMode === 'console'
-                  ? 'bg-slate-900 text-white'
-                  : 'text-slate-600'
+                  ? 'bg-card text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               <LayoutGrid className="mr-1.5 h-3.5 w-3.5" />
@@ -289,7 +289,7 @@ export function ProductionScheduleView({
             variant="outline"
             size="sm"
             onClick={() => setPrintModalOpen(true)}
-            className="h-8 text-xs font-bold text-slate-800"
+            className="h-8 text-xs font-bold"
           >
             <Printer className="mr-1.5 h-3.5 w-3.5" />
             Print Contingency Queue
@@ -303,7 +303,7 @@ export function ProductionScheduleView({
               type="button"
               variant="outline"
               size="sm"
-              className="h-8 text-xs font-bold text-slate-800"
+              className="h-8 text-xs font-bold"
             >
               <Download className="mr-1.5 h-3.5 w-3.5" />
               Export CSV
@@ -354,15 +354,15 @@ export function ProductionScheduleView({
           />
         </div>
       ) : (
-        <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <div className="border-border bg-card space-y-4 rounded-xl border p-5 shadow-xs">
+          <div className="border-border flex flex-wrap items-center justify-between gap-3 border-b pb-3">
             <div className="flex items-center gap-2">
-              <TableIcon className="h-5 w-5 text-blue-600" />
+              <TableIcon className="text-primary h-5 w-5" />
               <div>
-                <h2 className="text-sm font-bold text-slate-900">
+                <h2 className="text-foreground text-sm font-bold">
                   Active Production Queue & Station Readiness
                 </h2>
-                <p className="text-xs text-slate-500">
+                <p className="text-muted-foreground text-xs">
                   Showing {filteredItems.length} queued operation steps
                 </p>
               </div>
@@ -472,25 +472,25 @@ export function ProductionScheduleView({
                 <TableBody>
                   {filteredItems.map((item) => (
                     <TableRow key={item.id} className="text-xs">
-                      <TableCell className="font-bold text-slate-950">
+                      <TableCell className="text-foreground font-bold">
                         <div className="flex items-center gap-1.5">
-                          <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-sm text-slate-900">
+                          <span className="bg-muted text-foreground rounded-md px-1.5 py-0.5 font-mono text-sm">
                             {item.markCode}
                           </span>
-                          <span className="text-[11px] font-semibold text-slate-600">
+                          <span className="text-muted-foreground text-[11px] font-semibold">
                             {item.releaseKey}
                           </span>
                         </div>
-                        <div className="mt-0.5 text-[11px] text-slate-600">
+                        <div className="text-muted-foreground mt-0.5 text-[11px]">
                           {item.materialFamily} ({item.dimensions || 'Standard'}
                           )
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="font-semibold text-slate-900">
+                        <div className="text-foreground font-semibold">
                           {item.operationName}
                         </div>
-                        <div className="text-[11px] text-slate-600">
+                        <div className="text-muted-foreground text-[11px]">
                           Seq {item.sequence} • {item.department}
                         </div>
                       </TableCell>
@@ -498,35 +498,35 @@ export function ProductionScheduleView({
                       <TableCell>
                         <div className="space-y-1">
                           {getReadinessBadge(item)}
-                          <div className="text-[11px] font-medium text-slate-600">
+                          <div className="text-muted-foreground text-[11px] font-medium">
                             {item.readinessReason}
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="font-mono">
-                        <span className="font-bold text-blue-700">
+                        <span className="text-primary font-bold">
                           {item.remainingQuantity}
                         </span>
-                        <span className="text-slate-600">
+                        <span className="text-muted-foreground">
                           {' '}
                           / {item.plannedQuantity} pcs
                         </span>
                         {item.scrapQuantity > 0 && (
-                          <div className="text-[10px] font-bold text-red-600">
+                          <div className="text-destructive text-[10px] font-bold">
                             {item.scrapQuantity} scrap
                           </div>
                         )}
                       </TableCell>
                       <TableCell>
                         <div className="space-y-0.5">
-                          <div className="flex items-center gap-1 font-semibold text-slate-800">
-                            <MapPin className="h-3 w-3 text-slate-500" />
+                          <div className="text-foreground flex items-center gap-1 font-semibold">
+                            <MapPin className="text-muted-foreground h-3 w-3" />
                             <span>
                               {item.assignedWorkstationName || 'Unassigned'}
                             </span>
                           </div>
                           {item.assignedTeam && (
-                            <div className="text-[11px] text-slate-600">
+                            <div className="text-muted-foreground text-[11px]">
                               Team: {item.assignedTeam}
                             </div>
                           )}
@@ -544,7 +544,7 @@ export function ProductionScheduleView({
                             setTargetTeam(item.assignedTeam || '')
                             setReassignModalOpen(true)
                           }}
-                          className="h-7 px-2.5 text-xs font-semibold text-slate-800"
+                          className="h-7 px-2.5 text-xs font-semibold"
                         >
                           Dispatch
                         </Button>

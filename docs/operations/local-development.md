@@ -14,6 +14,10 @@ bun run seed
 
 Record the one-time fictional administrator password. Run `bun run dev` and `bun run worker` in separate terminals, then open `http://localhost:3000`.
 
+Seeding is explicit: opening application pages never creates showcase records or changes the schema. Start MinIO before running seed; failed object uploads now fail the seed instead of leaving document records without files. Synthetic seed commands reject production mode. Keep fixtures in an isolated local database and bucket.
+
+Passkeys use `APP_URL` as the trusted origin. Use `http://localhost:3000` locally and HTTPS for a hosted environment. `AUTH_SECRET` has no fallback and must be configured before starting or building the app. Local Playwright runs load `.env.local`; CI supplies its own environment and secrets.
+
 Stop PostgreSQL with `docker compose stop postgres`; live remains 200 while ready returns 503. Restart with `docker compose start postgres`. Use Dashboard → Immutable storage test with a fictional PDF. Run `bun run worker:smoke` with the worker active to observe retry and dead state.
 
 ```powershell

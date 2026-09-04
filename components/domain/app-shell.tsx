@@ -18,6 +18,7 @@ import {
   HardDrive,
   X,
 } from 'lucide-react'
+import { ThemeSegmentedControl } from '@/components/theme/theme-toggle'
 
 interface AppShellProps {
   user: {
@@ -149,6 +150,12 @@ export function AppShell({
                   )
                 })}
               </nav>
+              <div className="border-sidebar-border mt-auto border-t pt-4">
+                <div className="mb-2 text-xs font-semibold tracking-wider text-slate-400 uppercase">
+                  Appearance
+                </div>
+                <ThemeSegmentedControl className="bg-sidebar-accent w-full justify-between" />
+              </div>
             </div>
           </div>
         )}

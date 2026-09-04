@@ -25,7 +25,9 @@ import {
   UserCheck,
   UserX,
   Loader2,
+  Fingerprint,
 } from 'lucide-react'
+import { PasskeyManager } from '@/components/auth/passkey-manager'
 import {
   UserManagementItem,
   RoleManagementItem,
@@ -59,7 +61,7 @@ export function AdminDashboardView({
   initialAuditLogs,
 }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<
-    'users' | 'roles' | 'config' | 'audit'
+    'users' | 'roles' | 'config' | 'audit' | 'passkeys'
   >('users')
 
   const [usersList, setUsersList] = useState<UserManagementItem[]>(initialUsers)
@@ -506,6 +508,15 @@ export function AdminDashboardView({
           <History className="mr-1.5 h-3.5 w-3.5" />
           Audit Ledger ({auditLogsList.length})
         </Button>
+        <Button
+          variant={activeTab === 'passkeys' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setActiveTab('passkeys')}
+          className="text-xs font-semibold"
+        >
+          <Fingerprint className="mr-1.5 h-3.5 w-3.5" />
+          Passkeys &amp; Security Keys
+        </Button>
       </div>
 
       {/* TAB 1: USER MANAGEMENT */}
@@ -628,7 +639,9 @@ export function AdminDashboardView({
                                   : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
                               }`}
                               title={
-                                isDisabled ? 'Enable user login' : 'Disable user login'
+                                isDisabled
+                                  ? 'Enable user login'
+                                  : 'Disable user login'
                               }
                             >
                               {isLoading ? (
@@ -924,6 +937,15 @@ export function AdminDashboardView({
                 </tbody>
               </table>
             </div>
+          </Card>
+        </div>
+      )}
+
+      {/* TAB 5: PASSKEYS & BIOMETRIC SECURITY */}
+      {activeTab === 'passkeys' && (
+        <div className="space-y-4">
+          <Card className="border-slate-200 bg-white p-6 shadow-xs">
+            <PasskeyManager />
           </Card>
         </div>
       )}
@@ -1453,7 +1475,10 @@ export function AdminDashboardView({
                   checked={editUserIsAdmin}
                   onChange={(e) => setEditUserIsAdmin(e.target.checked)}
                 />
-                <label htmlFor="editIsAdmin" className="font-bold text-slate-800">
+                <label
+                  htmlFor="editIsAdmin"
+                  className="font-bold text-slate-800"
+                >
                   Grant Full Administrator Privilege
                 </label>
               </div>

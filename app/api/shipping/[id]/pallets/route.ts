@@ -44,7 +44,11 @@ export async function POST(
   }
 }
 
-export async function DELETE(req: Request) {
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params
   const session = await auth()
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -69,6 +73,7 @@ export async function DELETE(req: Request) {
         organizationId: session.user.organizationId,
       },
       shipmentPalletId,
+      id,
     )
 
     return NextResponse.json({ shipment })

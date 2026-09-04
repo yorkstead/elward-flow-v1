@@ -13,8 +13,6 @@ import {
 } from '@/db/schema'
 import { eq, desc, and } from 'drizzle-orm'
 import { Upload, FileDown, ArrowRight } from 'lucide-react'
-import { ensurePalletSchemaApplied } from '@/lib/services/pallet-planner'
-import { ensureSystemFoundationPopulated } from '@/lib/services/system-init'
 
 export const metadata = {
   title: 'Production Releases | Ellwood Flow',
@@ -49,13 +47,11 @@ export default async function ReleasesPage() {
   }[] = []
 
   try {
-    await ensurePalletSchemaApplied()
     let orgId = session.user.organizationId
     if (!orgId || orgId === 'undefined') {
       const [firstOrg] = await db.select().from(productionJobs).limit(1)
       if (firstOrg) orgId = firstOrg.organizationId
     }
-    await ensureSystemFoundationPopulated(orgId)
 
     const targetOrgId = orgId || '00000000-0000-0000-0000-000000000001'
     releaseList = await db

@@ -11,7 +11,6 @@ import {
 import { eq, and, desc } from 'drizzle-orm'
 import { QualityService } from '@/lib/services/quality'
 import { QualityDashboardView } from '@/components/domain/quality/quality-dashboard-view'
-import { ensureSystemFoundationPopulated } from '@/lib/services/system-init'
 
 export const metadata = {
   title: 'Quality Management | Ellwood Flow',
@@ -27,8 +26,6 @@ export default async function QualityPage() {
     'use server'
     await signOut({ redirectTo: '/sign-in' })
   }
-
-  await ensureSystemFoundationPopulated(session.user.organizationId)
 
   const context = {
     userId: session.user.id,

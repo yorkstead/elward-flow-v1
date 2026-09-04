@@ -11,58 +11,15 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const {
-      idempotencyKey,
-      recordType,
-      recordId,
-      recordIdentifier,
-      operationInstanceId,
-      actionId,
-      sourceStatus,
-      destinationStatus,
-      quantity,
-      unit = 'EA',
-      condition = 'pass',
-      reason,
-      notes,
-      workstationId,
-      deviceId,
-      clientTimestamp,
-    } = body
-
-    if (!idempotencyKey || !recordType || !recordId || !actionId) {
-      return NextResponse.json(
-        { error: 'Missing required parameters for movement execution.' },
-        { status: 400 },
-      )
-    }
-
     const result = await ScannerService.executeMovement(
       {
         userId: session.user.id,
         email: session.user.email,
         roles: session.user.roles || [],
         isAdmin: session.user.isAdmin,
+        organizationId: session.user.organizationId,
       },
-      {
-        idempotencyKey,
-        recordType,
-        recordId,
-        recordIdentifier: recordIdentifier || recordId,
-        operationInstanceId,
-        actionId,
-        sourceStatus: sourceStatus || 'In progress',
-        destinationStatus: destinationStatus || 'Completed',
-        quantity:
-          typeof quantity === 'number' ? quantity : parseFloat(quantity) || 1,
-        unit,
-        condition,
-        reason,
-        notes,
-        workstationId,
-        deviceId,
-        clientTimestamp,
-      },
+      body,
     )
 
     return NextResponse.json({

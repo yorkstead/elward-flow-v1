@@ -1,4 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
+import { loadEnvConfig } from '@next/env'
+
+// Match the application environment for local runs; CI supplies its own secrets.
+if (!process.env.CI) loadEnvConfig(process.cwd(), true)
 export default defineConfig({
   testDir: './tests/e2e',
   timeout: 60_000,

@@ -21,7 +21,6 @@ import {
   canAddMaterialToPallet,
   DEFAULT_ELWARD_PALLET_RULES,
 } from '@/lib/domain/palletization'
-import { ensurePalletSchemaApplied } from '@/lib/services/pallet-planner'
 
 export interface PalletSummary {
   id: string
@@ -90,8 +89,6 @@ export class PalletService {
   ): Promise<PalletSummary[]> {
     const orgId =
       context.organizationId || '00000000-0000-0000-0000-000000000001'
-
-    await ensurePalletSchemaApplied()
 
     const conditions = [eq(pallets.organizationId, orgId)]
     if (filters?.releaseId) {

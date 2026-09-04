@@ -10,7 +10,7 @@ test.describe('Active Release Command Center & Application Shell', () => {
     await page.goto('/sign-in')
     await page.getByLabel('Email').fill(email)
     await page.getByLabel('Password').fill(password)
-    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
     await expect(page).toHaveURL(/\/dashboard/)
     await page.goto('/dashboard?job=25036&release=1')
   })
@@ -38,8 +38,12 @@ test.describe('Active Release Command Center & Application Shell', () => {
       page.getByRole('link', { name: 'Scan', exact: true }),
     ).toBeVisible()
     await expect(page.getByRole('button', { name: 'Record Qty' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Drawings' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'CNC Files' })).toBeVisible()
+    await expect(
+      page.getByRole('link', { name: 'Drawings', exact: true }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('link', { name: 'CNC Files', exact: true }),
+    ).toBeVisible()
     await expect(
       page.getByRole('button', { name: 'Toggle Hold' }),
     ).toBeVisible()

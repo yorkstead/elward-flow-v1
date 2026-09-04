@@ -14,7 +14,12 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const items: ExecuteMovementInput[] = body.items || []
+    if (!Array.isArray(body.items) || body.items.length > 100)
+      return NextResponse.json(
+        { error: 'Expected at most 100 movements.' },
+        { status: 400 },
+      )
+    const items: ExecuteMovementInput[] = body.items
 
     const results = []
 
@@ -26,6 +31,7 @@ export async function POST(request: Request) {
             email: session.user.email,
             roles: session.user.roles || [],
             isAdmin: session.user.isAdmin,
+            organizationId: session.user.organizationId,
           },
           item,
         )

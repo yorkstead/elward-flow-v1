@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   index,
   integer,
@@ -122,6 +123,31 @@ export const verificationTokens = pgTable(
     expires: timestamp('expires', { withTimezone: true }).notNull(),
   },
   (table) => [primaryKey({ columns: [table.identifier, table.token] })],
+)
+
+export const passkeys = pgTable(
+  'passkeys',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    credentialId: text('credential_id').notNull(),
+    publicKey: text('public_key').notNull(),
+    counter: bigint('counter', { mode: 'number' }).notNull().default(0),
+    deviceType: text('device_type').notNull().default('singleDevice'),
+    backedUp: boolean('backed_up').notNull().default(false),
+    transports: jsonb('transports').$type<string[]>(),
+    friendlyName: text('friendly_name'),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('passkeys_credential_id_unique').on(table.credentialId),
+    index('passkeys_user_id_idx').on(table.userId),
+  ],
 )
 
 export const roles = pgTable(
@@ -1492,7 +1518,7 @@ export const shipmentPallets = pgTable(
   },
   (table) => [
     index('shipment_pallets_shipment_id_idx').on(table.shipmentId),
-    index('shipment_pallets_pallet_id_idx').on(table.palletId),
+    uniqueIndex('shipment_pallets_pallet_id_unique').on(table.palletId),
   ],
 )
 
@@ -1632,3 +1658,10 @@ export const shipmentPalletsRelations = relations(
     }),
   }),
 )
+
+export const passkeysRelations = relations(passkeys, ({ one }) => ({
+  user: one(users, {
+    fields: [passkeys.userId],
+    references: [users.id],
+  }),
+}))

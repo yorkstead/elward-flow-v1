@@ -149,15 +149,15 @@ export function DowntimeTracker({
   }
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+    <div className="border-border bg-card rounded-xl border p-4 shadow-xs">
+      <div className="border-border flex flex-wrap items-center justify-between gap-3 border-b pb-3">
         <div className="flex items-center gap-2">
-          <AlertOctagon className="h-5 w-5 text-red-600" />
+          <AlertOctagon className="text-destructive h-5 w-5" />
           <div>
-            <h2 className="text-sm font-bold text-slate-900">
+            <h2 className="text-foreground text-sm font-bold">
               Shop Downtime & Maintenance Tracker
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-muted-foreground text-xs">
               Active machine and tooling outages impacting production capacity
             </p>
           </div>
@@ -167,7 +167,7 @@ export function DowntimeTracker({
           type="button"
           size="sm"
           onClick={() => setLogModalOpen(true)}
-          className="bg-red-700 text-xs font-bold text-white shadow-xs hover:bg-red-800"
+          className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-bold shadow-xs"
         >
           <Plus className="mr-1.5 h-3.5 w-3.5" />
           Log Machine Downtime
@@ -175,8 +175,8 @@ export function DowntimeTracker({
       </div>
 
       {downtimes.length === 0 ? (
-        <div className="mt-3 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs font-medium text-emerald-900">
-          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs font-medium text-emerald-900 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
           <span>
             All shop workstations and machines are currently operational with 0
             open downtime events.

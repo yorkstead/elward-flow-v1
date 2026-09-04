@@ -75,18 +75,6 @@ jobs:
       - name: Apply Database Migrations
         run: bun run db:migrate
 
-      - name: Run Seed Data Verification
-        run: bun run seed
-
-      - name: Run Unit Tests
-        run: bun run test:unit
-
-      - name: Run Database Integration Tests
-        run: bun run test:integration
-
-      - name: Build Application
-        run: bun run build
-
       - name: Start Object Storage
         run: >-
           docker run --detach --name elward-flow-ci-minio
@@ -111,6 +99,18 @@ jobs:
           bun -e "import { getFileStore } from './lib/files/minio-file-store';
           await getFileStore().ensureReady();
           console.log('Object storage bucket ready')"
+
+      - name: Run Seed Data Verification
+        run: bun run seed
+
+      - name: Run Unit Tests
+        run: bun run test:unit
+
+      - name: Run Database Integration Tests
+        run: bun run test:integration
+
+      - name: Build Application
+        run: bun run build
 
       - name: Install Chromium
         run: bun x playwright install --with-deps chromium

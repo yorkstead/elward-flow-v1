@@ -2,6 +2,10 @@ import type { Metadata, Viewport } from 'next'
 import { Open_Sans, Roboto_Condensed } from 'next/font/google'
 import { OfflineStatus } from '@/components/offline-status'
 import { AppLaunchGate } from '@/components/brand/app-launch-gate'
+import {
+  ThemeProvider,
+  THEME_INIT_SCRIPT,
+} from '@/components/theme/theme-provider'
 import './globals.css'
 
 const openSans = Open_Sans({
@@ -49,12 +53,18 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${openSans.variable} ${robotoCondensed.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="flex min-h-full w-full max-w-full flex-col overflow-x-hidden font-sans">
-        <AppLaunchGate />
-        <OfflineStatus />
-        {children}
+        <ThemeProvider defaultTheme="system">
+          <AppLaunchGate />
+          <OfflineStatus />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   )
