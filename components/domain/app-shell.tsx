@@ -161,55 +161,92 @@ export function AppShell({
         )}
 
         {/* Main Content Workspace */}
-        <main className="w-full max-w-full min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
+        <main className="w-full max-w-full min-w-0 flex-1 overflow-x-hidden overflow-y-auto pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))] md:pb-0">
           {children}
         </main>
       </div>
 
-      {/* Mobile bottom quick bar */}
-      <nav className="border-sidebar-border bg-sidebar text-sidebar-foreground sticky bottom-0 z-30 grid grid-cols-4 border-t px-2 py-1.5 text-center text-[10px] shadow-lg md:hidden">
+      {/* Mobile bottom quick bar - fixed to viewport */}
+      <nav
+        aria-label="Mobile Quick Navigation"
+        className="border-sidebar-border/80 bg-flow-chrome/95 text-sidebar-foreground fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t px-2 pt-1 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] text-center text-[10px] shadow-2xl backdrop-blur-md md:hidden"
+      >
         <Link
           href="/dashboard"
-          className={`flex min-h-12 flex-col items-center justify-center rounded-md border-t-2 py-1 ${
+          aria-current={isActive('/dashboard', true) ? 'page' : undefined}
+          className={`relative flex min-h-12 flex-col items-center justify-center rounded-md py-1 transition-colors ${
             isActive('/dashboard', true)
-              ? 'border-brand-orange font-bold text-white'
-              : 'border-transparent text-slate-300'
+              ? 'font-bold text-white'
+              : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Compass className="mb-0.5 h-5 w-5" />
+          {isActive('/dashboard', true) && (
+            <span className="bg-brand-orange absolute inset-x-3 top-0 h-0.5 rounded-full" />
+          )}
+          <Compass
+            className={`mb-0.5 h-5 w-5 ${
+              isActive('/dashboard', true)
+                ? 'text-brand-orange'
+                : 'text-slate-400'
+            }`}
+          />
           Active
         </Link>
         <Link
           href="/scan"
-          className={`flex min-h-12 flex-col items-center justify-center rounded-md border-t-2 py-1 ${
+          aria-current={isActive('/scan') ? 'page' : undefined}
+          className={`relative flex min-h-12 flex-col items-center justify-center rounded-md py-1 transition-colors ${
             isActive('/scan')
-              ? 'border-brand-orange font-bold text-white'
-              : 'border-transparent text-slate-300'
+              ? 'font-bold text-white'
+              : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <QrCode className="mb-0.5 h-5 w-5" />
+          {isActive('/scan') && (
+            <span className="bg-brand-orange absolute inset-x-3 top-0 h-0.5 rounded-full" />
+          )}
+          <QrCode
+            className={`mb-0.5 h-5 w-5 ${
+              isActive('/scan') ? 'text-brand-orange' : 'text-slate-400'
+            }`}
+          />
           Scan
         </Link>
         <Link
           href="/production"
-          className={`flex min-h-12 flex-col items-center justify-center rounded-md border-t-2 py-1 ${
+          aria-current={isActive('/production') ? 'page' : undefined}
+          className={`relative flex min-h-12 flex-col items-center justify-center rounded-md py-1 transition-colors ${
             isActive('/production')
-              ? 'border-brand-orange font-bold text-white'
-              : 'border-transparent text-slate-300'
+              ? 'font-bold text-white'
+              : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Cpu className="mb-0.5 h-5 w-5" />
+          {isActive('/production') && (
+            <span className="bg-brand-orange absolute inset-x-3 top-0 h-0.5 rounded-full" />
+          )}
+          <Cpu
+            className={`mb-0.5 h-5 w-5 ${
+              isActive('/production') ? 'text-brand-orange' : 'text-slate-400'
+            }`}
+          />
           Shop
         </Link>
         <Link
           href="/quality"
-          className={`flex min-h-12 flex-col items-center justify-center rounded-md border-t-2 py-1 ${
+          aria-current={isActive('/quality') ? 'page' : undefined}
+          className={`relative flex min-h-12 flex-col items-center justify-center rounded-md py-1 transition-colors ${
             isActive('/quality')
-              ? 'border-brand-orange font-bold text-white'
-              : 'border-transparent text-slate-300'
+              ? 'font-bold text-white'
+              : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          <ShieldAlert className="mb-0.5 h-5 w-5" />
+          {isActive('/quality') && (
+            <span className="bg-brand-orange absolute inset-x-3 top-0 h-0.5 rounded-full" />
+          )}
+          <ShieldAlert
+            className={`mb-0.5 h-5 w-5 ${
+              isActive('/quality') ? 'text-brand-orange' : 'text-slate-400'
+            }`}
+          />
           Holds
         </Link>
       </nav>

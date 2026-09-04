@@ -109,39 +109,39 @@
 }
 
 .dark {
-  --flow-chrome: #030810;
-  --flow-workspace: #050c16;
-  --background: #060e19;
-  --foreground: #f8fafc;
-  --card: #0b1828;
-  --card-foreground: #f8fafc;
-  --popover: #0b1828;
-  --popover-foreground: #f8fafc;
-  --primary: #4a96dc;
+  --flow-chrome: #080c14;
+  --flow-workspace: #0b0f17;
+  --background: #0b0f17;
+  --foreground: #f1f5f9;
+  --card: #131a26;
+  --card-foreground: #f1f5f9;
+  --popover: #161f2e;
+  --popover-foreground: #f1f5f9;
+  --primary: #388bfd;
   --primary-foreground: #ffffff;
-  --secondary: #172b40;
-  --secondary-foreground: #f8fafc;
-  --muted: #112236;
+  --secondary: #1b2433;
+  --secondary-foreground: #e2e8f0;
+  --muted: #151d2a;
   --muted-foreground: #94a3b8;
-  --accent: #4a2113;
-  --accent-foreground: #ffd8ca;
-  --destructive: #ef4444;
-  --border: #1a334d;
-  --input: #1e3a57;
+  --accent: #1b2433;
+  --accent-foreground: #f8fafc;
+  --destructive: #f85149;
+  --border: #202b3c;
+  --input: #17202e;
   --ring: #f2673a;
-  --sidebar: #030810;
+  --sidebar: #080c14;
   --sidebar-foreground: #f8fafc;
   --sidebar-primary: #0865c1;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #0f2033;
+  --sidebar-accent: #151e2e;
   --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #1a334d;
+  --sidebar-border: #1e293b;
   --sidebar-ring: #f2673a;
-  --chart-1: #4a96dc;
-  --chart-2: #ff8056;
-  --chart-3: #34d399;
-  --chart-4: #818cf8;
-  --chart-5: #fbbf24;
+  --chart-1: #388bfd;
+  --chart-2: #f2673a;
+  --chart-3: #2ea043;
+  --chart-4: #8957e5;
+  --chart-5: #d29922;
 }
 
 /* Dark mode automatic adaptations for hardcoded white/slate utilities */
@@ -156,20 +156,23 @@
   }
 
   .bg-slate-100 {
-    background-color: #112236 !important;
+    background-color: #151d2a !important;
   }
 
   .bg-slate-200 {
-    background-color: #1a334d !important;
+    background-color: #1e293b !important;
   }
 
   .text-slate-950,
-  .text-slate-900,
-  .text-slate-800 {
-    color: #f8fafc !important;
+  .text-slate-900 {
+    color: #f1f5f9 !important;
   }
 
-  .text-slate-700,
+  .text-slate-800,
+  .text-slate-700 {
+    color: #e2e8f0 !important;
+  }
+
   .text-slate-600 {
     color: #cbd5e1 !important;
   }
@@ -185,7 +188,7 @@
   }
 
   .border-slate-300 {
-    border-color: #244262 !important;
+    border-color: #2b384e !important;
   }
 
   .divide-slate-100,
@@ -193,49 +196,49 @@
     border-color: var(--border) !important;
   }
 
-  /* Status banners & badges in dark mode */
+  /* Status banners & badges in dark mode - professional translucent pills */
   .bg-emerald-50,
   .bg-emerald-100 {
-    background-color: rgba(6, 78, 59, 0.35) !important;
-    color: #6ee7b7 !important;
-    border-color: rgba(16, 185, 129, 0.3) !important;
+    background-color: rgba(16, 185, 129, 0.14) !important;
+    color: #34d399 !important;
+    border-color: rgba(16, 185, 129, 0.25) !important;
   }
   .text-emerald-800,
   .text-emerald-700 {
-    color: #6ee7b7 !important;
+    color: #34d399 !important;
   }
 
   .bg-amber-50,
   .bg-amber-100 {
-    background-color: rgba(120, 53, 15, 0.35) !important;
-    color: #fcd34d !important;
-    border-color: rgba(245, 158, 11, 0.3) !important;
+    background-color: rgba(245, 158, 11, 0.14) !important;
+    color: #fbbf24 !important;
+    border-color: rgba(245, 158, 11, 0.25) !important;
   }
   .text-amber-800,
   .text-amber-700 {
-    color: #fcd34d !important;
+    color: #fbbf24 !important;
   }
 
   .bg-red-50,
   .bg-red-100 {
-    background-color: rgba(127, 29, 29, 0.35) !important;
-    color: #fca5a5 !important;
-    border-color: rgba(239, 68, 68, 0.3) !important;
+    background-color: rgba(239, 68, 68, 0.14) !important;
+    color: #f87171 !important;
+    border-color: rgba(239, 68, 68, 0.25) !important;
   }
   .text-red-800,
   .text-red-700 {
-    color: #fca5a5 !important;
+    color: #f87171 !important;
   }
 
   .bg-blue-50,
   .bg-blue-100 {
-    background-color: rgba(30, 58, 138, 0.35) !important;
-    color: #93c5fd !important;
-    border-color: rgba(59, 130, 246, 0.3) !important;
+    background-color: rgba(59, 130, 246, 0.14) !important;
+    color: #60a5fa !important;
+    border-color: rgba(59, 130, 246, 0.25) !important;
   }
   .text-blue-800,
   .text-blue-700 {
-    color: #93c5fd !important;
+    color: #60a5fa !important;
   }
 }
 
